@@ -1,8 +1,9 @@
 // AlarmService - Handles alarm creation, scheduling, and management
-// This service integrates with StorageService for data persistence
+// This service integrates with StorageService for data persistence and AlarmScheduler for system scheduling
 
 import { Alarm, CreateAlarmData, PuzzleType, WeekDay } from '../types';
 import StorageService from './StorageService';
+import { AlarmScheduler } from './AlarmScheduler';
 
 export class AlarmService {
   /**
@@ -13,31 +14,56 @@ export class AlarmService {
   }
 
   /**
-   * Create a new alarm
+   * Create a new alarm with automatic scheduling
    */
   static async createAlarm(alarmData: CreateAlarmData): Promise<Alarm> {
-    return await StorageService.createAlarm(alarmData);
+    const alarm = await StorageService.createAlarm(alarmData);
+    
+    // Schedule the alarm if it's enabled
+    if (alarm.isEnabled) {
+      await AlarmScheduler.scheduleAlarm(alarm);
+    }
+    
+    return alarm;
   }
 
   /**
-   * Update an existing alarm
+   * Update an existing alarm with rescheduling
    */
   static async updateAlarm(id: string, updates: Partial<Alarm>): Promise<Alarm | null> {
-    return await StorageService.updateAlarm(id, updates);
+    const updatedAlarm = await StorageService.updateAlarm(id, updates);
+    
+    if (updatedAlarm) {
+      // Reschedule the alarm with new settings
+      await AlarmScheduler.rescheduleAlarm(updatedAlarm);
+    }
+    
+    return updatedAlarm;
   }
 
   /**
-   * Delete an alarm
+   * Delete an alarm with cancellation
    */
   static async deleteAlarm(id: string): Promise<boolean> {
+    // Cancel the scheduled alarm first
+    await AlarmScheduler.cancelAlarm(id);
+    
+    // Then delete from storage
     return await StorageService.deleteAlarm(id);
   }
 
   /**
-   * Toggle alarm on/off
+   * Toggle alarm on/off with scheduling
    */
   static async toggleAlarm(id: string): Promise<Alarm | null> {
-    return await StorageService.toggleAlarm(id);
+    const updatedAlarm = await StorageService.toggleAlarm(id);
+    
+    if (updatedAlarm) {
+      // Reschedule based on new enabled state
+      await AlarmScheduler.rescheduleAlarm(updatedAlarm);
+    }
+    
+    return updatedAlarm;
   }
 
   /**
@@ -55,7 +81,7 @@ export class AlarmService {
   }
 
   /**
-   * Create a quick alarm with default settings
+   * Create a quick alarm with default settings and automatic scheduling
    */
   static async createQuickAlarm(time: string, label?: string): Promise<Alarm> {
     const settings = await StorageService.getUserSettings();
@@ -86,77 +112,41 @@ export class AlarmService {
   }
 
   /**
-   * Get next alarm that will trigger
+   * Get next alarm that will trigger (using AlarmScheduler)
    */
   static async getNextAlarm(): Promise<Alarm | null> {
-    const enabledAlarms = await this.getEnabledAlarms();
+    const nextTime = AlarmScheduler.getNextAlarmTime();
     
-    if (enabledAlarms.length === 0) {
+    if (!nextTime) {
       return null;
     }
 
-    const now = new Date();
-    const currentTime = now.getHours() * 60 + now.getMinutes();
-    const currentDay = now.getDay() as WeekDay;
-
-    let nextAlarm: Alarm | null = null;
-    let minTimeToNext = Infinity;
-
-    for (const alarm of enabledAlarms) {
-      const [hours, minutes] = alarm.time.split(':').map(Number);
-      const alarmTime = hours * 60 + minutes;
-
-      // Calculate time until this alarm
-      let timeToNext: number;
-      
-      if (alarm.repeatDays.length === 0) {
-        // One-time alarm
-        if (alarmTime > currentTime) {
-          timeToNext = alarmTime - currentTime;
-        } else {
-          timeToNext = (24 * 60) + alarmTime - currentTime; // Tomorrow
-        }
-      } else {
-        // Repeating alarm
-        let foundNext = false;
-        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
-          const checkDay = (currentDay + dayOffset) % 7 as WeekDay;
-          
-          if (alarm.repeatDays.includes(checkDay)) {
-            if (dayOffset === 0 && alarmTime > currentTime) {
-              // Today, and alarm hasn't passed yet
-              timeToNext = alarmTime - currentTime;
-              foundNext = true;
-              break;
-            } else if (dayOffset > 0) {
-              // Future day
-              timeToNext = (dayOffset * 24 * 60) + alarmTime - currentTime;
-              foundNext = true;
-              break;
-            }
-          }
-        }
-        
-        if (!foundNext) {
-          continue; // Skip this alarm
-        }
-      }
-
-      if (timeToNext! < minTimeToNext) {
-        minTimeToNext = timeToNext!;
-        nextAlarm = alarm;
-      }
-    }
-
-    return nextAlarm;
+    // Get the alarm that matches this next time
+    const enabledAlarms = await this.getEnabledAlarms();
+    const nextTimeString = `${nextTime.getHours().toString().padStart(2, '0')}:${nextTime.getMinutes().toString().padStart(2, '0')}`;
+    
+    // Find alarm with matching time
+    return enabledAlarms.find(alarm => alarm.time === nextTimeString) || null;
   }
 
-  // Future implementation will include:
-  // - scheduleAlarm() - Integration with system alarm/notification scheduling
-  // - cancelAlarm() - Cancel system scheduled alarms
-  // - triggerAlarm() - Handle alarm triggering logic
-  // - snoozeAlarm() - Handle snooze functionality
+  /**
+   * Refresh all alarm scheduling
+   */
+  static async refreshScheduling(): Promise<void> {
+    await AlarmScheduler.scheduleAllAlarms();
+  }
+
+  /**
+   * Get scheduling info for debugging
+   */
+  static getSchedulingInfo(): Record<string, any> {
+    return AlarmScheduler.getScheduledAlarmsInfo();
+  }
+
+  // Additional scheduling methods:
+  // - snoozeAlarm() - Handle snooze functionality (reschedule for 5-10 minutes later)
   // - completeAlarm() - Mark alarm as completed with puzzle solution
+  // - triggerAlarm() - Handle alarm triggering logic (will be called from App.tsx)
 }
 
 export default AlarmService;
