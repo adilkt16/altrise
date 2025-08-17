@@ -22,7 +22,9 @@ export interface UserSettings {
     notifications: boolean;
     exactAlarm: boolean;
     wakelock: boolean;
+    displayOverOtherApps: boolean;
   };
+  permissionsLastChecked: string; // ISO date string
   theme: 'light' | 'dark' | 'auto';
   defaultVibration: boolean;
   snoozeInterval: number; // Minutes
