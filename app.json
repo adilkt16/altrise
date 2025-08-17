@@ -4,13 +4,7 @@
     "slug": "altrise",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "assetBundlePatterns": [
       "**/*"
     ],
@@ -18,10 +12,6 @@
       "supportsTablet": true
     },
     "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
       "package": "com.altrise.alarmclock",
       "permissions": [
         "VIBRATE",
@@ -38,11 +28,25 @@
         "android.permission.POST_NOTIFICATIONS"
       ]
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
-    },
     "plugins": [
-      "expo-notifications"
-    ]
+      "expo-dev-client",
+      [
+        "expo-notifications",
+        {
+          "color": "#ffffff",
+          "defaultChannel": "default"
+        }
+      ]
+    ],
+    "notification": {
+      "color": "#ffffff",
+      "androidMode": "default",
+      "androidCollapsedTitle": "#{unread_notifications} new notifications"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "b98a99e5-dbc1-4606-a652-d6fb7880c940"
+      }
+    }
   }
 }

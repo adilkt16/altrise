@@ -48,14 +48,63 @@ export default function App() {
     try {
       console.log('🚀 Initializing AltRise alarm system...');
       
-      // Check and request permissions
+      // Request notification permissions first
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      let finalStatus = existingStatus;
+      
+      console.log('📋 Current notification permission:', existingStatus);
+      
+      if (existingStatus !== 'granted') {
+        console.log('📱 Requesting notification permissions...');
+        const { status } = await Notifications.requestPermissionsAsync({
+          ios: {
+            allowAlert: true,
+            allowBadge: true,
+            allowSound: true,
+          },
+          android: {
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+          },
+        });
+        finalStatus = status;
+        console.log('📋 New notification permission:', finalStatus);
+      }
+      
+      if (finalStatus !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Notification permissions are required for alarms to work. Please enable them in settings.',
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { 
+              text: 'Open Settings', 
+              onPress: () => {
+                // This will be handled by the PermissionService
+                console.log('🔧 User chose to open settings');
+              }
+            }
+          ]
+        );
+        // Continue initialization even without permissions for now
+        console.log('⚠️ Continuing without notification permissions');
+      } else {
+        console.log('✅ Notification permissions granted');
+      }
+      
+      // Check and request other permissions
       const permissionResult = await PermissionService.checkAllPermissions();
-      console.log('📋 Permission status:', permissionResult);
+      console.log('📋 All permission status:', permissionResult);
 
       // Initialize the alarm scheduler
       await AlarmScheduler.initialize();
       
       console.log('✅ AltRise alarm system initialized successfully');
+      
+      // Log helpful debug info
+      console.log('🔍 Debug: You can test notifications with:');
+      console.log('import { testImmediateNotification } from "./src/utils/alarmSchedulingTest"; testImmediateNotification();');
+      
     } catch (error) {
       console.error('❌ Error initializing alarm system:', error);
       Alert.alert(

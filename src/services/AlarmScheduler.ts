@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 import { StorageService } from './StorageService';
 import { Alarm, WeekDay } from '../types';
 
@@ -247,20 +248,26 @@ export class AlarmScheduler {
         ? 'Your alarm period has ended'
         : 'Wake up! Your alarm is ringing';
 
-      const notificationId = await Notifications.scheduleNotificationAsync({
-        content: {
-          title,
-          body,
-          sound: alarm.soundFile === 'default_alarm.mp3' ? 'default' : undefined,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          data: {
-            alarmId: alarm.id,
-            isEndTime,
-            puzzleType: alarm.puzzleType,
-          },
+      const notificationContent: Notifications.NotificationContentInput = {
+        title,
+        body,
+        sound: alarm.soundFile === 'default_alarm.mp3' ? 'default' : undefined,
+        priority: Notifications.AndroidNotificationPriority.MAX,
+        data: {
+          alarmId: alarm.id,
+          isEndTime,
+          puzzleType: alarm.puzzleType,
         },
+        ...(Platform.OS === 'android' && {
+          channelId: 'alarms',
+          sticky: !isEndTime,
+        }),
+      } as any;
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: notificationContent,
         trigger: {
-          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          type: 'date' as any,
           date: triggerDate,
         },
       });
@@ -309,6 +316,22 @@ export class AlarmScheduler {
   static async initialize(): Promise<void> {
     try {
       console.log('🔧 Initializing AlarmScheduler...');
+      
+      // Set up notification channel for Android
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('alarms', {
+          name: 'Alarms',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#FF231F7C',
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          bypassDnd: true,
+          enableLights: true,
+          enableVibrate: true,
+          showBadge: true,
+        });
+        console.log('📱 Android notification channel created');
+      }
       
       // Set notification handler
       Notifications.setNotificationHandler({
