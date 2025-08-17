@@ -5,6 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
+import AddAlarmScreen from './src/screens/AddAlarmScreen';
+import EditAlarmScreen from './src/screens/EditAlarmScreen';
 
 // Create stack navigator
 const Stack = createStackNavigator();
@@ -29,6 +31,16 @@ export default function App() {
             name="Home" 
             component={HomeScreen} 
             options={{ title: 'AltRise' }}
+          />
+          <Stack.Screen 
+            name="AddAlarm" 
+            component={AddAlarmScreen} 
+            options={{ title: 'Add Alarm' }}
+          />
+          <Stack.Screen 
+            name="EditAlarm" 
+            component={EditAlarmScreen} 
+            options={{ title: 'Edit Alarm' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

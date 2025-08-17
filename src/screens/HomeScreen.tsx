@@ -10,14 +10,13 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-// Optional navigation import - will be used when navigation is set up
-// import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from '@react-navigation/native';
 import AlarmCard from '../components/AlarmCard';
 import { StorageService } from '../services/StorageService';
 import { Alarm } from '../types';
 
 interface HomeScreenProps {
-  navigation?: any; // Will be typed properly when navigation is set up
+  navigation: any; // Will be typed properly when navigation is set up
 }
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
@@ -26,10 +25,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [use24HourFormat, setUse24HourFormat] = useState(false);
 
-  // Load alarms when component mounts
-  useEffect(() => {
-    loadAlarms();
-  }, []);
+  // Load alarms when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      loadAlarms();
+    }, [])
+  );
 
   const loadAlarms = async () => {
     try {
@@ -81,12 +82,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleEditAlarm = (alarm: Alarm) => {
-    // Navigate to edit screen (placeholder navigation)
-    Alert.alert(
-      'Edit Alarm', 
-      `Edit functionality will navigate to alarm edit screen for alarm at ${alarm.time}`
-    );
-    // TODO: navigation.navigate('EditAlarm', { alarmId: alarm.id });
+    // Navigate to edit screen
+    navigation.navigate('EditAlarm', { alarmId: alarm.id });
   };
 
   const handleDeleteAlarm = (alarmId: string) => {
@@ -119,12 +116,8 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   };
 
   const handleAddAlarm = () => {
-    // Navigate to add alarm screen (placeholder navigation)
-    Alert.alert(
-      'Add Alarm', 
-      'Add alarm functionality will navigate to alarm creation screen'
-    );
-    // TODO: navigation.navigate('AddAlarm');
+    // Navigate to add alarm screen
+    navigation.navigate('AddAlarm');
   };
 
   const renderAlarmItem = ({ item }: { item: Alarm }) => (
