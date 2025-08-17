@@ -17,7 +17,8 @@ import { PermissionService } from './src/services/PermissionService';
 // Create stack navigator
 const Stack = createStackNavigator();
 
-export default function App() {
+// Main App Component
+const App: React.FC = () => {
   const appState = useRef(AppState.currentState);
   const notificationListener = useRef<Notifications.Subscription | null>(null);
   const responseListener = useRef<Notifications.Subscription | null>(null);
@@ -132,71 +133,102 @@ export default function App() {
   const handleNotificationReceived = (notification: Notifications.Notification) => {
     const { data } = notification.request.content;
     
+    console.log('🔔 Notification received:', JSON.stringify(data, null, 2));
+    
     if (data?.alarmId && typeof data.alarmId === 'string') {
-      console.log(`⏰ Alarm ${data.alarmId} triggered`);
+      console.log(`⏰ Alarm ${data.alarmId} triggered at ${new Date().toLocaleTimeString()}`);
       
       if (data.isEndTime) {
         console.log('🔚 Alarm end time reached');
-        // Handle alarm end time logic here
-        // For now, just show a simple alert
         Alert.alert(
           'Alarm Ended',
           'Your alarm period has ended.',
           [{ text: 'OK' }]
         );
       } else {
-        console.log('🚨 Alarm is ringing!');
-        // Handle main alarm trigger
-        // This is where you would show the alarm screen with puzzle
-        handleAlarmTrigger(data.alarmId, data);
+        console.log('🚨 ALARM IS RINGING! Showing basic notification...');
+        
+        // Show basic alarm notification
+        Alert.alert(
+          '⏰ Alarm!',
+          `${data.alarmLabel || 'Alarm'} is ringing!\n\nTime: ${new Date().toLocaleTimeString()}`,
+          [
+            { text: 'Dismiss', style: 'cancel' },
+            { text: 'Snooze (5 min)', onPress: () => handleSnooze(data.alarmId as string) }
+          ]
+        );
+        
+        console.log(`✅ Basic alarm notification shown for alarm ${data.alarmId}`);
       }
+    } else {
+      console.log('⚠️ Notification received but no valid alarm data found');
     }
   };
 
   const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
     const { data } = response.notification.request.content;
     
+    console.log('👆 User tapped notification:', JSON.stringify(data, null, 2));
+    
     if (data?.alarmId && typeof data.alarmId === 'string') {
       console.log(`👆 User interacted with alarm ${data.alarmId}`);
       
       if (!data.isEndTime) {
-        // User tapped on the alarm notification
-        handleAlarmTrigger(data.alarmId, data);
+        console.log('🚨 User tapped alarm notification - showing basic alert');
+        
+        // Show basic alarm alert when user taps notification
+        Alert.alert(
+          '⏰ Alarm Active',
+          `${data.alarmLabel || 'Alarm'} was triggered.\n\nTime: ${new Date().toLocaleTimeString()}`,
+          [
+            { text: 'Dismiss', style: 'cancel' },
+            { text: 'Snooze (5 min)', onPress: () => handleSnooze(data.alarmId as string) }
+          ]
+        );
+        
+        console.log(`✅ Basic alarm alert shown from user tap: ${data.alarmId}`);
       }
+    } else {
+      console.log('⚠️ User tapped notification but no valid alarm data found');
     }
   };
 
-  const handleAlarmTrigger = (alarmId: string, data: Record<string, any>) => {
-    console.log(`🚨 Handling alarm trigger for ${alarmId}`);
-    
-    // For now, show a simple alert
-    // Later this will open the puzzle modal or alarm screen
-    Alert.alert(
-      '⏰ Alarm!',
-      `Your alarm is ringing! Puzzle type: ${data.puzzleType || 'None'}`,
-      [
-        { 
-          text: 'Snooze', 
-          onPress: () => handleSnooze(alarmId) 
+  const handleSnooze = async (alarmId: string) => {
+    try {
+      console.log(`⏰ Snoozing alarm ${alarmId} for 5 minutes...`);
+      
+      // Schedule a snooze notification 5 minutes from now
+      const snoozeTime = new Date();
+      snoozeTime.setMinutes(snoozeTime.getMinutes() + 5);
+      
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '⏰ Snooze Alarm',
+          body: 'Your snoozed alarm is ringing again!',
+          sound: 'default',
+          data: {
+            alarmId,
+            isSnooze: true,
+            alarmLabel: 'Snoozed Alarm',
+          },
         },
-        { 
-          text: 'Turn Off', 
-          onPress: () => handleTurnOff(alarmId) 
-        }
-      ]
-    );
-  };
-
-  const handleSnooze = (alarmId: string) => {
-    console.log(`😴 Snoozing alarm ${alarmId}`);
-    // TODO: Implement snooze logic
-    // This would reschedule the alarm for 5-10 minutes later
-  };
-
-  const handleTurnOff = (alarmId: string) => {
-    console.log(`🔕 Turning off alarm ${alarmId}`);
-    // TODO: Implement turn off logic
-    // This would mark the alarm as completed and update stats
+        trigger: {
+          type: 'date' as any,
+          date: snoozeTime,
+        },
+      });
+      
+      console.log(`✅ Snooze scheduled for ${snoozeTime.toLocaleTimeString()}`);
+      
+      Alert.alert(
+        'Alarm Snoozed',
+        `Alarm will ring again at ${snoozeTime.toLocaleTimeString()}`,
+        [{ text: 'OK' }]
+      );
+    } catch (error) {
+      console.error('❌ Error snoozing alarm:', error);
+      Alert.alert('Error', 'Failed to snooze alarm');
+    }
   };
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
@@ -253,4 +285,6 @@ export default function App() {
       </NavigationContainer>
     </SafeAreaProvider>
   );
-}
+};
+
+export default App;

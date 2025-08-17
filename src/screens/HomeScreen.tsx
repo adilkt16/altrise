@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import AlarmCard from '../components/AlarmCard';
+import { TestAlarmButton } from '../components/TestAlarmButton';
 import { StorageService } from '../services/StorageService';
 import { Alarm } from '../types';
 
@@ -143,6 +144,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const renderHeader = () => (
     <View style={styles.header}>
       <Text style={styles.title}>My Alarms</Text>
+      <TestAlarmButton onAlarmCreated={loadAlarms} />
       <TouchableOpacity 
         style={styles.formatToggle}
         onPress={() => setUse24HourFormat(!use24HourFormat)}
