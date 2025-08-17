@@ -1,13 +1,19 @@
-// Storage utility functions using AsyncStorage
+// Legacy storage utility functions - kept for compatibility
+// New code should use StorageService instead
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const STORAGE_KEYS = {
   ALARMS: '@altrise:alarms',
-  SETTINGS: '@altrise:settings',
-  USER_PREFERENCES: '@altrise:user_preferences',
-};
+  SETTINGS: '@altrise:user_settings',
+  ALARM_STATS: '@altrise:alarm_stats',
+  ALARM_EVENTS: '@altrise:alarm_events',
+  USER_PREFERENCES: '@altrise:user_preferences', // Legacy key
+} as const;
 
+/**
+ * @deprecated Use StorageService.storeData instead
+ */
 export const storeData = async (key: string, value: any): Promise<void> => {
   try {
     const jsonValue = JSON.stringify(value);
@@ -18,6 +24,9 @@ export const storeData = async (key: string, value: any): Promise<void> => {
   }
 };
 
+/**
+ * @deprecated Use StorageService.getData instead
+ */
 export const getData = async (key: string): Promise<any> => {
   try {
     const jsonValue = await AsyncStorage.getItem(key);
@@ -28,6 +37,9 @@ export const getData = async (key: string): Promise<any> => {
   }
 };
 
+/**
+ * @deprecated Use StorageService methods instead
+ */
 export const removeData = async (key: string): Promise<void> => {
   try {
     await AsyncStorage.removeItem(key);
@@ -37,6 +49,9 @@ export const removeData = async (key: string): Promise<void> => {
   }
 };
 
+/**
+ * @deprecated Use StorageService.clearAllData instead
+ */
 export const clearAllData = async (): Promise<void> => {
   try {
     await AsyncStorage.clear();
