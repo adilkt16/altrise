@@ -295,6 +295,73 @@ if (__DEV__) {
       console.error('❌ Background simulation failed:', error);
     }
   };
+
+  // Modal testing functions
+  (global as any).testModal = async () => {
+    try {
+      console.log('🚨 Testing alarm modal display...');
+      
+      const modalManager = require('../services/AlarmModalManager').default;
+      
+      const testModalData = {
+        alarmId: 'test_modal_' + Date.now(),
+        title: 'Test Alarm Modal',
+        label: 'Modal Test',
+        originalTime: new Date().toLocaleTimeString(),
+        puzzleType: 'none',
+        onDismiss: () => console.log('✅ Test modal dismissed'),
+        onSnooze: () => console.log('😴 Test modal snoozed'),
+      };
+
+      await modalManager.showAlarmModal(testModalData);
+      console.log('✅ Test modal should be visible now');
+      
+    } catch (error) {
+      console.error('❌ Modal test failed:', error);
+    }
+  };
+
+  (global as any).testModalPuzzle = async () => {
+    try {
+      console.log('🧩 ===============================================');
+      console.log('🧩 TESTING PUZZLE MODAL FUNCTIONALITY');
+      console.log('🧩 ===============================================');
+      
+      const { AlarmModalManager } = require('../services/AlarmModalManager');
+      const modalManager = AlarmModalManager.getInstance();
+      
+      // Test with explicit basic_math first
+      const testModalData = {
+        alarmId: 'test_puzzle_' + Date.now(),
+        title: 'Puzzle Test Alarm',
+        label: 'Math Puzzle Test',
+        originalTime: new Date().toLocaleTimeString(),
+        puzzleType: 'basic_math', // Explicitly test basic_math
+        onDismiss: () => {
+          console.log('✅ Test puzzle modal dismissed');
+          modalManager.hideAlarmModal();
+        },
+        onSnooze: () => {
+          console.log('😴 Test puzzle modal snoozed');
+          modalManager.hideAlarmModal();
+        },
+      };
+
+      console.log('🧩 Test modal data:', testModalData);
+      
+      const success = await modalManager.showAlarmModal(testModalData);
+      
+      if (success) {
+        console.log(`✅ Test modal with ${testModalData.puzzleType} puzzle should be visible now`);
+        console.log('🧩 Check the screen - you should see a math question to solve!');
+      } else {
+        console.error('❌ Modal failed to display');
+      }
+      
+    } catch (error) {
+      console.error('❌ Modal puzzle test failed:', error);
+    }
+  };
   
   console.log('�🔧 Debug functions available globally:');
   console.log('  testNotifications() - Test immediate notification');
@@ -309,4 +376,9 @@ if (__DEV__) {
   console.log('  checkAppState() - Check current app lifecycle state');
   console.log('  testAppLifecycle() - Show lifecycle testing guide');
   console.log('  simulateBackgroundReturn() - Simulate background return info');
+  console.log('');
+  console.log('🚨 Modal system testing:');
+  console.log('  getModalDebugInfo() - Check current modal state');
+  console.log('  testModal() - Test alarm modal display');
+  console.log('  testModalPuzzle() - Test modal with puzzle');
 }

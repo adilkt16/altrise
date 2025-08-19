@@ -10,9 +10,13 @@ import HomeScreen from './src/screens/HomeScreen';
 import AddAlarmScreen from './src/screens/AddAlarmScreen';
 import EditAlarmScreen from './src/screens/EditAlarmScreen';
 
+// Import components
+import AlarmModal, { AlarmModalData } from './src/components/AlarmModal';
+
 // Import services
 import { AlarmScheduler } from './src/services/AlarmScheduler';
 import { PermissionService } from './src/services/PermissionService';
+import modalManager, { AlarmModalState } from './src/services/AlarmModalManager';
 
 // Configure notification behavior globally
 Notifications.setNotificationHandler({
@@ -40,6 +44,19 @@ const App: React.FC = () => {
   const [lastBackgroundTime, setLastBackgroundTime] = useState<Date | null>(null);
   const [listenerRetryCount, setListenerRetryCount] = useState(0);
   const maxRetries = 3;
+  
+  // Track processed notifications to prevent duplicates
+  const processedNotifications = useRef<Set<string>>(new Set());
+  const alarmRescheduleTimeout = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Alarm modal state
+  const [modalState, setModalState] = useState<AlarmModalState>({
+    isVisible: false,
+    data: null,
+    startTime: null,
+    endTime: null,
+    persistentId: null,
+  });
 
   // Helper functions for lifecycle management (defined before useEffect)
   const setupBackgroundNotificationHandling = () => {
@@ -440,6 +457,9 @@ const App: React.FC = () => {
       checkMissedNotifications();
     }
 
+    // Notify modal manager of app state change
+    modalManager.handleAppStateChange(nextAppState);
+
     appState.current = nextAppState;
     console.log('📱 ===============================================');
   };
@@ -520,10 +540,17 @@ const App: React.FC = () => {
     // Add permission change listener
     setupPermissionChangeListener();
 
+    // Subscribe to modal manager
+    const modalUnsubscribe = modalManager.subscribe((newModalState) => {
+      console.log('🚨 [App] Modal state changed:', newModalState.isVisible);
+      setModalState(newModalState);
+    });
+
     return () => {
       console.log('🧹 App unmounting - cleaning up all listeners...');
       subscription?.remove();
       cleanupAllListeners();
+      modalUnsubscribe(); // Unsubscribe from modal manager
       
       // Clean up permission check interval
       if ((global as any).permissionCheckInterval) {
@@ -533,15 +560,30 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Notification handler functions (from previous implementation)
-  const handleNotificationReceived = (notification: Notifications.Notification) => {
+  // Enhanced notification handler functions with AlarmModal integration
+  const handleNotificationReceived = async (notification: Notifications.Notification) => {
     const { data } = notification.request.content;
+    const notificationId = notification.request.identifier;
     const now = new Date();
+    
+    // Prevent processing duplicate notifications
+    if (processedNotifications.current.has(notificationId)) {
+      console.log(`🔔 [DUPLICATE] Notification ${notificationId} already processed, skipping`);
+      return;
+    }
+    
+    processedNotifications.current.add(notificationId);
+    
+    // Clean up old notification IDs (keep only last 50)
+    if (processedNotifications.current.size > 50) {
+      const ids = Array.from(processedNotifications.current);
+      processedNotifications.current = new Set(ids.slice(-25));
+    }
     
     console.log('🔔 ===============================================');
     console.log('🔔 NOTIFICATION RECEIVED IN FOREGROUND');
     console.log('🔔 ===============================================');
-    console.log(`🔔 Notification ID: ${notification.request.identifier}`);
+    console.log(`🔔 Notification ID: ${notificationId}`);
     console.log(`🔔 Title: ${notification.request.content.title}`);
     console.log(`🔔 Body: ${notification.request.content.body}`);
     console.log(`🔔 Current Time: ${now.toLocaleString()}`);
@@ -570,38 +612,30 @@ Time: ${now.toLocaleTimeString()}`,
           [{ text: 'OK' }]
         );
       } else {
-        console.log('🚨 MAIN ALARM IS RINGING!');
-        console.log(`📱 Showing alarm notification for: ${data.alarmLabel || 'Unnamed Alarm'}`);
+        console.log('🚨 MAIN ALARM IS RINGING - SHOWING MODAL!');
+        console.log(`📱 Showing alarm modal for: ${data.alarmLabel || 'Unnamed Alarm'}`);
         
-        // Handle the triggered notification (reschedule if needed)
-        AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
+        // Debounced alarm rescheduling to prevent spam
+        if (data.alarmId && typeof data.alarmId === 'string') {
+          const alarmId = data.alarmId as string;
+          
+          // Clear any existing reschedule timeout for this alarm
+          if (alarmRescheduleTimeout.current.has(alarmId)) {
+            clearTimeout(alarmRescheduleTimeout.current.get(alarmId)!);
+          }
+          
+          // Set a new timeout to reschedule (debounced by 2 seconds)
+          const timeout = setTimeout(() => {
+            console.log('🔄 RESCHEDULING REPEATING ALARM', alarmId, '...');
+            AlarmScheduler.handleNotificationTriggered(alarmId, false);
+            alarmRescheduleTimeout.current.delete(alarmId);
+          }, 2000);
+          
+          alarmRescheduleTimeout.current.set(alarmId, timeout);
+        }
         
-        // Show alarm alert
-        Alert.alert(
-          '⏰ ALARM RINGING!',
-          `${data.alarmLabel || 'Alarm'} is ringing!
-
-Started: ${now.toLocaleTimeString()}
-Original Time: ${data.originalTime || 'Unknown'}`,
-          [
-            { 
-              text: 'Dismiss', 
-              style: 'cancel',
-              onPress: () => {
-                console.log(`✅ ALARM ${data.alarmId} DISMISSED by user at ${new Date().toLocaleTimeString()}`);
-              }
-            },
-            { 
-              text: 'Snooze (5 min)', 
-              onPress: () => {
-                console.log(`😴 ALARM ${data.alarmId} SNOOZED by user at ${new Date().toLocaleTimeString()}`);
-                handleSnooze(data.alarmId as string);
-              }
-            }
-          ]
-        );
-        
-        console.log(`📱 ALARM ALERT DISPLAYED for alarm ${data.alarmId}`);
+        // Show alarm modal
+        await showAlarmModal(data);
       }
     } else {
       console.log('⚠️ Notification received but no valid alarm data found');
@@ -611,14 +645,23 @@ Original Time: ${data.originalTime || 'Unknown'}`,
     console.log('🔔 ===============================================');
   };
 
-  const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
+  const handleNotificationResponse = async (response: Notifications.NotificationResponse) => {
     const { data } = response.notification.request.content;
+    const notificationId = response.notification.request.identifier;
     const now = new Date();
+    
+    // Prevent processing duplicate notification responses
+    if (processedNotifications.current.has(notificationId)) {
+      console.log(`👆 [DUPLICATE] Notification response ${notificationId} already processed, skipping`);
+      return;
+    }
+    
+    processedNotifications.current.add(notificationId);
     
     console.log('👆 ===============================================');
     console.log('👆 NOTIFICATION RESPONSE (USER TAPPED)');
     console.log('👆 ===============================================');
-    console.log(`👆 Notification ID: ${response.notification.request.identifier}`);
+    console.log(`👆 Notification ID: ${notificationId}`);
     console.log(`👆 Action Type: ${response.actionIdentifier}`);
     console.log(`👆 User Input: ${response.userText || 'None'}`);
     console.log(`👆 Response Time: ${now.toLocaleString()}`);
@@ -628,34 +671,13 @@ Original Time: ${data.originalTime || 'Unknown'}`,
       console.log(`👆 User interacted with alarm ${data.alarmId}`);
       
       if (!data.isEndTime) {
-        console.log('👆 User tapped MAIN ALARM notification');
+        console.log('👆 User tapped MAIN ALARM notification - SHOWING MODAL!');
         
-        // Handle the triggered notification (reschedule if needed)
-        AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
+        // Note: No need to reschedule here as it should already be handled by handleNotificationReceived
+        // or we'd have duplicate rescheduling
         
-        // Show alarm alert when user taps notification
-        Alert.alert(
-          '⏰ ALARM ACTIVATED',
-          `${data.alarmLabel || 'Alarm'} was triggered from notification.\\n\\nTapped at: ${now.toLocaleTimeString()}\\nOriginal Time: ${data.originalTime || 'Unknown'}`,
-          [
-            { 
-              text: 'Dismiss', 
-              style: 'cancel',
-              onPress: () => {
-                console.log(`✅ ALARM ${data.alarmId} DISMISSED from notification tap at ${new Date().toLocaleTimeString()}`);
-              }
-            },
-            { 
-              text: 'Snooze (5 min)', 
-              onPress: () => {
-                console.log(`😴 ALARM ${data.alarmId} SNOOZED from notification tap at ${new Date().toLocaleTimeString()}`);
-                handleSnooze(data.alarmId as string);
-              }
-            }
-          ]
-        );
-        
-        console.log(`📱 ALARM ALERT DISPLAYED from notification tap: ${data.alarmId}`);
+        // Show alarm modal when user taps notification
+        await showAlarmModal(data);
       } else {
         console.log('👆 User tapped END TIME notification - showing info only');
         Alert.alert(
@@ -671,7 +693,76 @@ Original Time: ${data.originalTime || 'Unknown'}`,
     console.log('👆 ===============================================');
   };
 
-  const handleSnooze = async (alarmId: string) => {
+  // Function to show alarm modal using the modal manager
+  const showAlarmModal = async (notificationData: any) => {
+    try {
+      console.log('🚨 [App] Preparing to show alarm modal...');
+      
+      // Get alarm data from storage to get puzzle type and other details
+      const { StorageService } = require('./src/services/StorageService');
+      const alarmData = await StorageService.getAlarmById(notificationData.alarmId);
+      
+      if (!alarmData) {
+        console.error('❌ [App] Alarm data not found for ID:', notificationData.alarmId);
+        throw new Error('Alarm data not found');
+      }
+
+      const modalData: AlarmModalData = {
+        alarmId: notificationData.alarmId,
+        title: notificationData.alarmLabel || alarmData.label || 'Alarm',
+        label: alarmData.label,
+        originalTime: notificationData.originalTime || alarmData.time,
+        endTime: alarmData.endTime,
+        puzzleType: alarmData.puzzleType || 'none',
+        onDismiss: () => {
+          console.log(`✅ [App] Alarm ${notificationData.alarmId} dismissed via modal`);
+          modalManager.hideAlarmModal();
+        },
+        onSnooze: () => {
+          console.log(`😴 [App] Alarm ${notificationData.alarmId} snoozed via modal`);
+          handleSnooze(notificationData.alarmId);
+          modalManager.hideAlarmModal();
+        },
+      };
+
+      console.log('🚨 [App] Modal data prepared:', modalData);
+      
+      // Show modal using modal manager
+      const success = await modalManager.showAlarmModal(modalData);
+      
+      if (!success) {
+        console.error('❌ [App] Modal manager failed to show modal');
+        throw new Error('Modal display failed');
+      }
+      
+      console.log('✅ [App] Alarm modal displayed successfully');
+
+    } catch (error) {
+      console.error('❌ [App] Error showing alarm modal:', error);
+      
+      // Fallback to basic alert if modal fails
+      Alert.alert(
+        '⏰ ALARM RINGING!',
+        `${notificationData.alarmLabel || 'Alarm'} is ringing!\n\n(Modal display failed - using fallback)`,
+        [
+          { 
+            text: 'Dismiss', 
+            style: 'cancel',
+            onPress: () => {
+              console.log(`✅ ALARM ${notificationData.alarmId} DISMISSED via fallback at ${new Date().toLocaleTimeString()}`);
+            }
+          },
+          { 
+            text: 'Snooze (5 min)', 
+            onPress: () => {
+              console.log(`😴 ALARM ${notificationData.alarmId} SNOOZED via fallback at ${new Date().toLocaleTimeString()}`);
+              handleSnooze(notificationData.alarmId);
+            }
+          }
+        ]
+      );
+    }
+  };  const handleSnooze = async (alarmId: string) => {
     try {
       const now = new Date();
       const snoozeTime = new Date();
@@ -760,6 +851,16 @@ Original Time: ${data.originalTime || 'Unknown'}`,
           />
         </Stack.Navigator>
       </NavigationContainer>
+      
+      {/* Alarm Modal - Renders on top of everything */}
+      <AlarmModal
+        visible={modalState.isVisible}
+        data={modalState.data}
+        onClose={() => {
+          console.log('🚨 [App] AlarmModal onClose called');
+          modalManager.hideAlarmModal();
+        }}
+      />
     </SafeAreaProvider>
   );
 };

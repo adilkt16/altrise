@@ -59,10 +59,12 @@ export enum WeekDay {
 
 export enum PuzzleType {
   NONE = 'none',
-  MATH = 'math',
+  BASIC_MATH = 'basic_math',
+  NUMBER_SEQUENCE = 'number_sequence',
+  MATH = 'math', // Legacy support
   MEMORY = 'memory',
   PATTERN = 'pattern',
-  SEQUENCE = 'sequence',
+  SEQUENCE = 'sequence', // Legacy support
   QR_CODE = 'qr_code',
   SHAKE = 'shake',
 }
