@@ -102,8 +102,8 @@ class AlarmModalManager {
       // Notify all listeners
       this.notifyListeners();
 
-      // Set up fallback mechanisms
-      this.setupFallbackMechanisms(persistentId, data);
+      // Set up fallback mechanisms - DISABLED to prevent dismiss/snooze alerts
+      // this.setupFallbackMechanisms(persistentId, data);
 
       console.log(`✅ [ModalManager] Modal state updated, notified ${this.modalStateListeners.length} listeners`);
       return true;
@@ -111,8 +111,8 @@ class AlarmModalManager {
     } catch (error) {
       console.error('❌ [ModalManager] Error showing alarm modal:', error);
       
-      // Send fallback notification
-      await this.sendFallbackNotification(data);
+      // Send fallback notification - DISABLED to prevent dismiss/snooze alerts
+      // await this.sendFallbackNotification(data);
       return false;
     }
   }

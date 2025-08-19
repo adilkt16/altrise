@@ -216,8 +216,8 @@ export const AlarmModal: React.FC<{
       console.error('❌ [AlarmModal] Error showing modal:', error);
       setModalError(`Failed to display alarm modal: ${error}`);
       
-      // Fallback notification if modal fails
-      await sendFallbackNotification(modalData);
+      // Fallback notification if modal fails - DISABLED to prevent dismiss/snooze alerts
+      // await sendFallbackNotification(modalData);
     }
   };
 
@@ -432,11 +432,6 @@ export const AlarmModal: React.FC<{
       handleDismiss();
     } else {
       console.log(`❌ [AlarmModal] Incorrect answer. Continue trying until correct or end time reached.`);
-      Alert.alert(
-        'Incorrect Answer',
-        `Try again! The alarm will only dismiss when you solve the puzzle correctly or the end time is reached.`,
-        [{ text: 'OK', onPress: () => setUserAnswer('') }]
-      );
       setUserAnswer('');
     }
   };
@@ -544,19 +539,6 @@ export const AlarmModal: React.FC<{
               )}
             </View>
           )}
-
-          {/* Action Buttons */}
-          <View style={styles.buttonContainer}>
-            {!showPuzzle && (
-              <TouchableOpacity style={[styles.button, styles.dismissButton]} onPress={handleDismiss}>
-                <Text style={styles.buttonText}>Dismiss</Text>
-              </TouchableOpacity>
-            )}
-            
-            <TouchableOpacity style={[styles.button, styles.snoozeButton]} onPress={handleSnooze}>
-              <Text style={styles.buttonText}>Snooze (5 min)</Text>
-            </TouchableOpacity>
-          </View>
 
           {/* Debug Info (development only) */}
           {__DEV__ && (
