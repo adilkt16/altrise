@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as TaskManager from 'expo-task-manager';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
@@ -13,6 +14,9 @@ import EditAlarmScreen from './src/screens/EditAlarmScreen';
 // Import services
 import { AlarmScheduler } from './src/services/AlarmScheduler';
 import { PermissionService } from './src/services/PermissionService';
+
+// Background notification task
+const BACKGROUND_NOTIFICATION_TASK = 'background-notification-task';
 
 // Configure notification behavior globally
 Notifications.setNotificationHandler({
@@ -105,6 +109,51 @@ const App: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    console.log('🚀 ===============================================');
+    console.log('🚀 ALTRISE APP LIFECYCLE INITIALIZATION');
+    console.log('🚀 ===============================================');
+    console.log(`🚀 Platform: ${Platform.OS}`);
+    console.log(`🚀 Initial app state: ${AppState.currentState}`);
+    console.log(`🚀 App started at: ${new Date().toLocaleString()}`);
+    
+    // Initialize alarm system with enhanced lifecycle support
+    initializeAlarmSystemWithLifecycle();
+
+    // Set up comprehensive notification listeners
+    setupRobustNotificationListeners();
+
+    // Handle app state changes with detailed logging
+    const subscription = AppState.addEventListener('change', handleAppStateChangeRobust);
+
+    // Set up background task for notifications (Android)
+    if (Platform.OS === 'android') {
+      setupBackgroundNotificationHandling();
+    }
+
+    // Add permission change listener
+    setupPermissionChangeListener();
+
+    return () => {
+      console.log('🧹 App unmounting - cleaning up all listeners...');
+      subscription?.remove();
+      cleanupAllListeners();
+      
+      // Clean up permission check interval
+      if ((global as any).permissionCheckInterval) {
+        clearInterval((global as any).permissionCheckInterval);
+        delete (global as any).permissionCheckInterval;
+      }
+    };
+  }, []);
+
+    return () => {
+      console.log('🧹 App unmounting - cleaning up all listeners...');
+      subscription?.remove();
+      cleanupAllListeners();
+    };
+  }, []);
+
   const cleanupAllListeners = () => {
     console.log('🧹 ===============================================');
     console.log('🧹 CLEANING UP ALL LISTENERS');
@@ -133,13 +182,28 @@ const App: React.FC = () => {
     console.log('🧹 ===============================================');
   };
 
+  const cleanupNotificationListeners = () => {
+    // Backwards compatibility - call the enhanced cleanup
+    cleanupAllListeners();
+  };
+
+  const initializeAlarmSystemWithLifecycle = async () => {
+    try {
+      console.log('🚀 ===============================================');
+      console.log('🚀 INITIALIZING ENHANCED ALARM SYSTEM');
+      console.log('🚀 ===============================================');
+      console.log('🚀 Initializing AltRise alarm system with lifecycle support...');
+      console.log(`🚀 Platform: ${Platform.OS}`);
+      console.log(`🚀 App version: ${require('./package.json').version}`);
+      
+      // Check device capabilities
   const checkDeviceCapabilities = async () => {
     try {
       console.log('🔍 Checking device capabilities...');
       
       // Check notification settings
       const settings = await Notifications.getPermissionsAsync();
-      console.log('📋 Notification settings:', JSON.stringify(settings, null, 2));
+      console.log('� Notification settings:', JSON.stringify(settings, null, 2));
       console.log('📅 Device supports scheduled notifications via expo-notifications');
       
     } catch (error) {
@@ -223,17 +287,6 @@ const App: React.FC = () => {
       console.error('❌ Error setting up notification categories:', error);
     }
   };
-
-  const initializeAlarmSystemWithLifecycle = async () => {
-    try {
-      console.log('🚀 ===============================================');
-      console.log('🚀 INITIALIZING ENHANCED ALARM SYSTEM');
-      console.log('🚀 ===============================================');
-      console.log('🚀 Initializing AltRise alarm system with lifecycle support...');
-      console.log(`🚀 Platform: ${Platform.OS}`);
-      
-      // Check device capabilities
-      await checkDeviceCapabilities();
       
       // Request comprehensive notification permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
@@ -268,7 +321,7 @@ const App: React.FC = () => {
         console.log('⚠️ ===============================================');
         Alert.alert(
           'Critical Permission Required',
-          'AltRise requires notification permissions to function as an alarm clock. Without these permissions, alarms will not work.\\n\\nPlease enable notifications in your device settings.',
+          'AltRise requires notification permissions to function as an alarm clock. Without these permissions, alarms will not work.\n\nPlease enable notifications in your device settings.',
           [
             { text: 'Cancel', style: 'cancel' },
             { 
@@ -335,7 +388,7 @@ const App: React.FC = () => {
       console.error('❌ Error initializing enhanced alarm system:', error);
       Alert.alert(
         'Critical Initialization Error',
-        'There was a serious problem setting up the alarm system. The app may not function properly.\\n\\nPlease restart the app and check your device permissions.',
+        'There was a serious problem setting up the alarm system. The app may not function properly.\n\nPlease restart the app and check your device permissions.',
         [
           { text: 'Restart App', onPress: () => {
             console.log('🔄 User chose to restart app');
@@ -346,6 +399,8 @@ const App: React.FC = () => {
       );
     }
   };
+
+  const initializeAlarmSystem = initializeAlarmSystemWithLifecycle; // Backwards compatibility
 
   const setupRobustNotificationListeners = () => {
     console.log('🔧 ===============================================');
@@ -359,14 +414,14 @@ const App: React.FC = () => {
       // Listen for notifications that come in while the app is foregrounded
       notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
         console.log(`🔔 [FOREGROUND] Notification received: ${notification.request.identifier}`);
-        console.log(`🔔 [FOREGROUND] App state: ${AppState.currentState}`);
+        console.log(`� [FOREGROUND] App state: ${AppState.currentState}`);
         handleNotificationReceived(notification);
       });
       
       // Listen for user interactions with notifications
       responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
         console.log(`👆 [INTERACTION] Response received: ${response.notification.request.identifier}`);
-        console.log(`👆 [INTERACTION] App state: ${AppState.currentState}`);
+        console.log(`� [INTERACTION] App state: ${AppState.currentState}`);
         handleNotificationResponse(response);
       });
       
@@ -397,144 +452,9 @@ const App: React.FC = () => {
     console.log('🔧 ===============================================');
   };
 
-  const handleAppStateChangeRobust = (nextAppState: AppStateStatus) => {
-    const previousState = appState.current;
-    
-    console.log('📱 ===============================================');
-    console.log('📱 APP STATE CHANGE DETECTED');
-    console.log('📱 ===============================================');
-    console.log(`📱 Previous state: ${previousState}`);
-    console.log(`📱 New state: ${nextAppState}`);
-    console.log(`📱 Time: ${new Date().toLocaleString()}`);
-    
-    // Update state tracking
-    setIsAppInForeground(nextAppState === 'active');
-    
-    if (nextAppState === 'background') {
-      setLastBackgroundTime(new Date());
-      console.log('📱 App going to background - scheduling preserved');
-    }
-    
-    if (previousState.match(/inactive|background/) && nextAppState === 'active') {
-      console.log('📱 ===============================================');
-      console.log('📱 APP RESUMING FROM BACKGROUND');
-      console.log('📱 ===============================================');
-      
-      const backgroundDuration = lastBackgroundTime 
-        ? Math.round((new Date().getTime() - lastBackgroundTime.getTime()) / 1000)
-        : 0;
-      
-      console.log(`📱 App was in background for ${backgroundDuration} seconds`);
-      console.log('📱 Performing background recovery...');
-      
-      // Re-setup notification listeners (they may have been lost)
-      console.log('🔧 Re-establishing notification listeners...');
-      setupRobustNotificationListeners();
-      
-      // Refresh alarm scheduling when app becomes active
-      console.log('🔄 Refreshing alarm scheduling...');
-      refreshAlarmScheduling();
-      
-      // Check if any notifications were triggered while app was backgrounded
-      console.log('🔍 Checking for missed notifications...');
-      checkMissedNotifications();
-    }
+  const setupNotificationListeners = setupRobustNotificationListeners; // Backwards compatibility
 
-    appState.current = nextAppState;
-    console.log('📱 ===============================================');
-  };
-
-  const refreshAlarmScheduling = async () => {
-    try {
-      console.log('🔄 ===============================================');
-      console.log('🔄 REFRESHING ALARM SCHEDULING');
-      console.log('🔄 ===============================================');
-      console.log('🔄 Refreshing alarm scheduling after app state change...');
-      
-      // Force refresh to ensure everything is properly scheduled
-      await AlarmScheduler.forceRefreshScheduling();
-      
-      // Get diagnostic info
-      await AlarmScheduler.getDiagnosticInfo();
-      
-      console.log('✅ Alarm scheduling refreshed successfully');
-      console.log('🔄 ===============================================');
-      
-    } catch (error) {
-      console.error('❌ Error refreshing alarm scheduling:', error);
-      Alert.alert(
-        'Scheduling Error',
-        'There was a problem refreshing alarm schedules. Some alarms may not work properly.',
-        [{ text: 'OK' }]
-      );
-    }
-  };
-
-  const checkMissedNotifications = async () => {
-    try {
-      console.log('🔍 Checking for notifications that may have been missed...');
-      
-      // In a real implementation, you might check for delivered notifications
-      // that weren't handled while the app was backgrounded
-      const deliveredNotifications = await Notifications.getPresentedNotificationsAsync();
-      
-      if (deliveredNotifications.length > 0) {
-        console.log(`🔔 Found ${deliveredNotifications.length} delivered notifications to handle`);
-        
-        // Process any delivered notifications
-        deliveredNotifications.forEach((notification, index) => {
-          console.log(`🔔 Processing delivered notification ${index + 1}: ${notification.request.identifier}`);
-          // You could process these if needed
-        });
-      } else {
-        console.log('✅ No missed notifications found');
-      }
-      
-    } catch (error) {
-      console.error('❌ Error checking missed notifications:', error);
-    }
-  };
-
-  useEffect(() => {
-    console.log('🚀 ===============================================');
-    console.log('🚀 ALTRISE APP LIFECYCLE INITIALIZATION');
-    console.log('🚀 ===============================================');
-    console.log(`🚀 Platform: ${Platform.OS}`);
-    console.log(`🚀 Initial app state: ${AppState.currentState}`);
-    console.log(`🚀 App started at: ${new Date().toLocaleString()}`);
-    
-    // Initialize alarm system with enhanced lifecycle support
-    initializeAlarmSystemWithLifecycle();
-
-    // Set up comprehensive notification listeners
-    setupRobustNotificationListeners();
-
-    // Handle app state changes with detailed logging
-    const subscription = AppState.addEventListener('change', handleAppStateChangeRobust);
-
-    // Set up background task for notifications (Android)
-    if (Platform.OS === 'android') {
-      setupBackgroundNotificationHandling();
-    }
-
-    // Add permission change listener
-    setupPermissionChangeListener();
-
-    return () => {
-      console.log('🧹 App unmounting - cleaning up all listeners...');
-      subscription?.remove();
-      cleanupAllListeners();
-      
-      // Clean up permission check interval
-      if ((global as any).permissionCheckInterval) {
-        clearInterval((global as any).permissionCheckInterval);
-        delete (global as any).permissionCheckInterval;
-      }
-    };
-  }, []);
-
-  // Notification handler functions (from previous implementation)
-  const handleNotificationReceived = (notification: Notifications.Notification) => {
+    const handleNotificationReceived = (notification: Notifications.Notification) => {
     const { data } = notification.request.content;
     const now = new Date();
     
@@ -611,67 +531,65 @@ Original Time: ${data.originalTime || 'Unknown'}`,
     console.log('🔔 ===============================================');
   };
 
-  const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
-    const { data } = response.notification.request.content;
-    const now = new Date();
+const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
+  const { data } = response.notification.request.content;
+  const now = new Date();
+  
+  console.log('👆 ===============================================');
+  console.log('👆 NOTIFICATION RESPONSE (USER TAPPED)');
+  console.log('👆 ===============================================');
+  console.log(`👆 Notification ID: ${response.notification.request.identifier}`);
+  console.log(`👆 Action Type: ${response.actionIdentifier}`);
+  console.log(`👆 User Input: ${response.userText || 'None'}`);
+  console.log(`👆 Response Time: ${now.toLocaleString()}`);
+  console.log('👆 Response Data:', JSON.stringify(data, null, 2));
+  
+  if (data?.alarmId && typeof data.alarmId === 'string') {
+    console.log(`👆 User interacted with alarm ${data.alarmId}`);
     
-    console.log('👆 ===============================================');
-    console.log('👆 NOTIFICATION RESPONSE (USER TAPPED)');
-    console.log('👆 ===============================================');
-    console.log(`👆 Notification ID: ${response.notification.request.identifier}`);
-    console.log(`👆 Action Type: ${response.actionIdentifier}`);
-    console.log(`👆 User Input: ${response.userText || 'None'}`);
-    console.log(`👆 Response Time: ${now.toLocaleString()}`);
-    console.log('👆 Response Data:', JSON.stringify(data, null, 2));
-    
-    if (data?.alarmId && typeof data.alarmId === 'string') {
-      console.log(`👆 User interacted with alarm ${data.alarmId}`);
+    if (!data.isEndTime) {
+      console.log('� User tapped MAIN ALARM notification');
       
-      if (!data.isEndTime) {
-        console.log('👆 User tapped MAIN ALARM notification');
-        
-        // Handle the triggered notification (reschedule if needed)
-        AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
-        
-        // Show alarm alert when user taps notification
-        Alert.alert(
-          '⏰ ALARM ACTIVATED',
-          `${data.alarmLabel || 'Alarm'} was triggered from notification.\\n\\nTapped at: ${now.toLocaleTimeString()}\\nOriginal Time: ${data.originalTime || 'Unknown'}`,
-          [
-            { 
-              text: 'Dismiss', 
-              style: 'cancel',
-              onPress: () => {
-                console.log(`✅ ALARM ${data.alarmId} DISMISSED from notification tap at ${new Date().toLocaleTimeString()}`);
-              }
-            },
-            { 
-              text: 'Snooze (5 min)', 
-              onPress: () => {
-                console.log(`😴 ALARM ${data.alarmId} SNOOZED from notification tap at ${new Date().toLocaleTimeString()}`);
-                handleSnooze(data.alarmId as string);
-              }
+      // Handle the triggered notification (reschedule if needed)
+      AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
+      
+      // Show alarm alert when user taps notification
+      Alert.alert(
+        '⏰ ALARM ACTIVATED',
+        `${data.alarmLabel || 'Alarm'} was triggered from notification.\n\nTapped at: ${now.toLocaleTimeString()}\nOriginal Time: ${data.originalTime || 'Unknown'}`,
+        [
+          { 
+            text: 'Dismiss', 
+            style: 'cancel',
+            onPress: () => {
+              console.log(`✅ ALARM ${data.alarmId} DISMISSED from notification tap at ${new Date().toLocaleTimeString()}`);
             }
-          ]
-        );
-        
-        console.log(`📱 ALARM ALERT DISPLAYED from notification tap: ${data.alarmId}`);
-      } else {
-        console.log('👆 User tapped END TIME notification - showing info only');
-        Alert.alert(
-          'Alarm Information',
-          `End time notification for: ${data.alarmLabel || 'Alarm'}`,
-          [{ text: 'OK' }]
-        );
-      }
+          },
+          { 
+            text: 'Snooze (5 min)', 
+            onPress: () => {
+              console.log(`😴 ALARM ${data.alarmId} SNOOZED from notification tap at ${new Date().toLocaleTimeString()}`);
+              handleSnooze(data.alarmId as string);
+            }
+          }
+        ]
+      );
+      
+      console.log(`📱 ALARM ALERT DISPLAYED from notification tap: ${data.alarmId}`);
     } else {
-      console.log('⚠️ User tapped notification but no valid alarm data found');
+      console.log('👆 User tapped END TIME notification - showing info only');
+      Alert.alert(
+        'Alarm Information',
+        `End time notification for: ${data.alarmLabel || 'Alarm'}`,
+        [{ text: 'OK' }]
+      );
     }
-    
-    console.log('👆 ===============================================');
-  };
-
-  const handleSnooze = async (alarmId: string) => {
+  } else {
+    console.log('⚠️ User tapped notification but no valid alarm data found');
+  }
+  
+  console.log('👆 ===============================================');
+};  const handleSnooze = async (alarmId: string) => {
     try {
       const now = new Date();
       const snoozeTime = new Date();
@@ -711,7 +629,7 @@ Original Time: ${data.originalTime || 'Unknown'}`,
       
       Alert.alert(
         'Alarm Snoozed',
-        `Alarm will ring again at ${snoozeTime.toLocaleTimeString()}\\n\\nSnoozed for 5 minutes`,
+        `Alarm will ring again at ${snoozeTime.toLocaleTimeString()}\n\nSnoozed for 5 minutes`,
         [{ 
           text: 'OK',
           onPress: () => {
@@ -725,6 +643,43 @@ Original Time: ${data.originalTime || 'Unknown'}`,
     } catch (error) {
       console.error('❌ Error snoozing alarm:', error);
       Alert.alert('Snooze Error', 'Failed to snooze alarm. Please try again.');
+    }
+  };
+
+  const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    console.log(`📱 App state change: ${appState.current} -> ${nextAppState}`);
+    
+    if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+      console.log('📱 App has come to the foreground - refreshing alarm system');
+      
+      // Re-setup notification listeners (they may have been lost)
+      setupNotificationListeners();
+      
+      // Refresh alarm scheduling when app becomes active
+      refreshAlarmScheduling();
+    }
+
+    appState.current = nextAppState;
+  };
+
+  const refreshAlarmScheduling = async () => {
+    try {
+      console.log('🔄 Refreshing alarm scheduling after app state change...');
+      
+      // Force refresh to ensure everything is properly scheduled
+      await AlarmScheduler.forceRefreshScheduling();
+      
+      // Get diagnostic info
+      await AlarmScheduler.getDiagnosticInfo();
+      
+      console.log('✅ Alarm scheduling refreshed successfully');
+    } catch (error) {
+      console.error('❌ Error refreshing alarm scheduling:', error);
+      Alert.alert(
+        'Scheduling Error',
+        'There was a problem refreshing alarm schedules. Some alarms may not work properly.',
+        [{ text: 'OK' }]
+      );
     }
   };
 

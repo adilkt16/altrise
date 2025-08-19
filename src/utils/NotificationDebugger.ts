@@ -218,7 +218,85 @@ if (__DEV__) {
   (global as any).quickDebug = quickDebugSession;
   (global as any).logScheduled = logAllScheduledNotifications;
   
-  console.log('🔧 Debug functions available globally:');
+  // Enhanced lifecycle testing functions
+  (global as any).checkAppState = () => {
+    try {
+      const { AppState, Platform } = require('react-native');
+      console.log('📱 ===============================================');
+      console.log('📱 CURRENT APP LIFECYCLE STATE');
+      console.log('📱 ===============================================');
+      console.log(`📱 App State: ${AppState.currentState}`);
+      console.log(`📱 Current Time: ${new Date().toLocaleString()}`);
+      console.log(`📱 Platform: ${Platform.OS}`);
+      console.log('💡 TIP: Check the main app log for detailed listener status');
+      console.log('📱 ===============================================');
+    } catch (error) {
+      console.error('❌ App state check failed:', error);
+    }
+  };
+  
+  (global as any).testAppLifecycle = () => {
+    try {
+      console.log('🔄 ===============================================');
+      console.log('🔄 APP LIFECYCLE TESTING GUIDE');
+      console.log('� ===============================================');
+      console.log('🔄 To test app lifecycle reliability:');
+      console.log('');
+      console.log('1️⃣ CREATE TEST ALARM:');
+      console.log('   • Set alarm for 2-3 minutes from now');
+      console.log('   • Watch for scheduling logs');
+      console.log('');
+      console.log('2️⃣ TEST FOREGROUND:');
+      console.log('   • Leave app open');
+      console.log('   • Alarm should trigger with full modal');
+      console.log('');
+      console.log('3️⃣ TEST BACKGROUND:');
+      console.log('   • Set another alarm 2-3 minutes out');
+      console.log('   • Press home button (background app)');
+      console.log('   • Notification should appear in status bar');
+      console.log('   • Tap notification to return to app');
+      console.log('');
+      console.log('4️⃣ TEST APP KILLED:');
+      console.log('   • Set alarm 2-3 minutes out');
+      console.log('   • Swipe app away (kill it)');
+      console.log('   • Notification should still appear');
+      console.log('');
+      console.log('5️⃣ TEST PHONE LOCKED:');
+      console.log('   • Set alarm 2-3 minutes out');
+      console.log('   • Lock phone screen');
+      console.log('   • Notification should wake screen');
+      console.log('');
+      console.log('✅ All scenarios should work reliably!');
+      console.log('🔄 ===============================================');
+    } catch (error) {
+      console.error('❌ Lifecycle test guide failed:', error);
+    }
+  };
+  
+  (global as any).simulateBackgroundReturn = () => {
+    try {
+      console.log('🔄 ===============================================');
+      console.log('🔄 BACKGROUND RETURN SIMULATION');
+      console.log('🔄 ===============================================');
+      console.log('🔄 Simulating app return from background...');
+      console.log('💡 This would trigger the enhanced recovery logic');
+      console.log('💡 In real usage, this happens automatically when:');
+      console.log('   • User taps app icon');
+      console.log('   • User taps notification');
+      console.log('   • User switches back to app');
+      console.log('');
+      console.log('🔧 Recovery actions include:');
+      console.log('   • Re-establishing notification listeners');
+      console.log('   • Refreshing alarm scheduling');
+      console.log('   • Checking for missed notifications');
+      console.log('   • Validating permissions');
+      console.log('🔄 ===============================================');
+    } catch (error) {
+      console.error('❌ Background simulation failed:', error);
+    }
+  };
+  
+  console.log('�🔧 Debug functions available globally:');
   console.log('  testNotifications() - Test immediate notification');
   console.log('  testScheduled(10) - Test scheduled notification in 10 seconds');
   console.log('  refreshAlarms() - Force refresh all alarm scheduling');
@@ -226,4 +304,9 @@ if (__DEV__) {
   console.log('  cleanupNotifications() - Clean up orphaned notifications');
   console.log('  quickDebug() - Run quick debug session');
   console.log('  logScheduled() - Log all currently scheduled notifications');
+  console.log('');
+  console.log('🔄 Enhanced lifecycle testing:');
+  console.log('  checkAppState() - Check current app lifecycle state');
+  console.log('  testAppLifecycle() - Show lifecycle testing guide');
+  console.log('  simulateBackgroundReturn() - Simulate background return info');
 }
