@@ -36,14 +36,24 @@ const App: React.FC = () => {
     return () => {
       // Cleanup
       subscription?.remove();
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      cleanupNotificationListeners();
     };
   }, []);
+
+  const cleanupNotificationListeners = () => {
+    console.log('🧹 Cleaning up notification listeners...');
+    
+    if (notificationListener.current) {
+      Notifications.removeNotificationSubscription(notificationListener.current);
+      notificationListener.current = null;
+    }
+    if (responseListener.current) {
+      Notifications.removeNotificationSubscription(responseListener.current);
+      responseListener.current = null;
+    }
+    
+    console.log('✅ Notification listeners cleaned up');
+  };
 
   const initializeAlarmSystem = async () => {
     try {
@@ -102,9 +112,23 @@ const App: React.FC = () => {
       
       console.log('✅ AltRise alarm system initialized successfully');
       
+      // Import debug utilities in development
+      if (__DEV__) {
+        try {
+          const debugUtils = await import('./src/utils/NotificationDebugger');
+          console.log('🔧 Debug utilities loaded - use global functions for testing');
+        } catch (error) {
+          console.warn('⚠️ Could not load debug utilities:', error);
+        }
+      }
+      
       // Log helpful debug info
       console.log('🔍 Debug: You can test notifications with:');
-      console.log('import { testImmediateNotification } from "./src/utils/alarmSchedulingTest"; testImmediateNotification();');
+      console.log('• testNotifications() - Test immediate notification');
+      console.log('• testScheduled(10) - Test scheduled in 10 seconds');
+      console.log('• refreshAlarms() - Force refresh scheduling');
+      console.log('• debugAlarms() - Run full diagnostics');
+      console.log('• quickDebug() - Run comprehensive test session');
       
     } catch (error) {
       console.error('❌ Error initializing alarm system:', error);
@@ -117,99 +141,190 @@ const App: React.FC = () => {
   };
 
   const setupNotificationListeners = () => {
+    console.log('🔧 Setting up notification listeners...');
+    
+    // Clean up any existing listeners first
+    cleanupNotificationListeners();
+    
     // Listen for notifications that come in while the app is foregrounded
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('🔔 Notification received:', notification);
+      console.log('🔔 Notification received in foreground:', notification.request.identifier);
+      console.log('📱 Notification content:', notification.request.content.title);
+      console.log('📊 Notification data:', JSON.stringify(notification.request.content.data, null, 2));
       handleNotificationReceived(notification);
     });
 
     // Listen for user interactions with notifications
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('👆 Notification response received:', response);
+      console.log('👆 Notification response received:', response.notification.request.identifier);
+      console.log('📊 Response data:', JSON.stringify(response.notification.request.content.data, null, 2));
       handleNotificationResponse(response);
     });
+    
+    console.log('✅ Notification listeners set up successfully');
   };
 
-  const handleNotificationReceived = (notification: Notifications.Notification) => {
+    const handleNotificationReceived = (notification: Notifications.Notification) => {
     const { data } = notification.request.content;
+    const now = new Date();
     
-    console.log('🔔 Notification received:', JSON.stringify(data, null, 2));
+    console.log('🔔 ===============================================');
+    console.log('🔔 NOTIFICATION RECEIVED IN FOREGROUND');
+    console.log('🔔 ===============================================');
+    console.log(`🔔 Notification ID: ${notification.request.identifier}`);
+    console.log(`🔔 Title: ${notification.request.content.title}`);
+    console.log(`🔔 Body: ${notification.request.content.body}`);
+    console.log(`🔔 Current Time: ${now.toLocaleString()}`);
+    console.log(`🔔 Received At: ${now.toISOString()}`);
+    console.log('🔔 Notification Data:', JSON.stringify(data, null, 2));
     
     if (data?.alarmId && typeof data.alarmId === 'string') {
-      console.log(`⏰ Alarm ${data.alarmId} triggered at ${new Date().toLocaleTimeString()}`);
+      console.log(`⏰ ALARM ${data.alarmId} TRIGGERED at ${now.toLocaleTimeString()}`);
+      
+      // Log timing information
+      if (data.expectedTriggerTime && typeof data.expectedTriggerTime === 'string') {
+        const expectedTime = new Date(data.expectedTriggerTime);
+        const timeDiff = now.getTime() - expectedTime.getTime();
+        console.log(`⏱️ Expected trigger: ${expectedTime.toLocaleString()}`);
+        console.log(`⏱️ Actual trigger: ${now.toLocaleString()}`);
+        console.log(`⏱️ Time difference: ${timeDiff}ms (${Math.round(timeDiff/1000)}s)`);
+      }
       
       if (data.isEndTime) {
-        console.log('🔚 Alarm end time reached');
+        console.log('🔚 ALARM END TIME REACHED');
         Alert.alert(
           'Alarm Ended',
-          'Your alarm period has ended.',
+          `Your alarm period has ended.
+
+Time: ${now.toLocaleTimeString()}`,
           [{ text: 'OK' }]
         );
       } else {
-        console.log('🚨 ALARM IS RINGING! Showing basic notification...');
+        console.log('🚨 MAIN ALARM IS RINGING!');
+        console.log(`📱 Showing alarm notification for: ${data.alarmLabel || 'Unnamed Alarm'}`);
         
-        // Show basic alarm notification
+        // Handle the triggered notification (reschedule if needed)
+        AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
+        
+        // Show alarm alert
         Alert.alert(
-          '⏰ Alarm!',
-          `${data.alarmLabel || 'Alarm'} is ringing!\n\nTime: ${new Date().toLocaleTimeString()}`,
+          '⏰ ALARM RINGING!',
+          `${data.alarmLabel || 'Alarm'} is ringing!
+
+Started: ${now.toLocaleTimeString()}
+Original Time: ${data.originalTime || 'Unknown'}`,
           [
-            { text: 'Dismiss', style: 'cancel' },
-            { text: 'Snooze (5 min)', onPress: () => handleSnooze(data.alarmId as string) }
+            { 
+              text: 'Dismiss', 
+              style: 'cancel',
+              onPress: () => {
+                console.log(`✅ ALARM ${data.alarmId} DISMISSED by user at ${new Date().toLocaleTimeString()}`);
+              }
+            },
+            { 
+              text: 'Snooze (5 min)', 
+              onPress: () => {
+                console.log(`😴 ALARM ${data.alarmId} SNOOZED by user at ${new Date().toLocaleTimeString()}`);
+                handleSnooze(data.alarmId as string);
+              }
+            }
           ]
         );
         
-        console.log(`✅ Basic alarm notification shown for alarm ${data.alarmId}`);
+        console.log(`📱 ALARM ALERT DISPLAYED for alarm ${data.alarmId}`);
       }
     } else {
       console.log('⚠️ Notification received but no valid alarm data found');
+      console.log('⚠️ This might be a test notification or system notification');
     }
+    
+    console.log('🔔 ===============================================');
   };
 
-  const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
-    const { data } = response.notification.request.content;
+const handleNotificationResponse = (response: Notifications.NotificationResponse) => {
+  const { data } = response.notification.request.content;
+  const now = new Date();
+  
+  console.log('👆 ===============================================');
+  console.log('👆 NOTIFICATION RESPONSE (USER TAPPED)');
+  console.log('👆 ===============================================');
+  console.log(`👆 Notification ID: ${response.notification.request.identifier}`);
+  console.log(`👆 Action Type: ${response.actionIdentifier}`);
+  console.log(`👆 User Input: ${response.userText || 'None'}`);
+  console.log(`👆 Response Time: ${now.toLocaleString()}`);
+  console.log('👆 Response Data:', JSON.stringify(data, null, 2));
+  
+  if (data?.alarmId && typeof data.alarmId === 'string') {
+    console.log(`👆 User interacted with alarm ${data.alarmId}`);
     
-    console.log('👆 User tapped notification:', JSON.stringify(data, null, 2));
-    
-    if (data?.alarmId && typeof data.alarmId === 'string') {
-      console.log(`👆 User interacted with alarm ${data.alarmId}`);
+    if (!data.isEndTime) {
+      console.log('� User tapped MAIN ALARM notification');
       
-      if (!data.isEndTime) {
-        console.log('🚨 User tapped alarm notification - showing basic alert');
-        
-        // Show basic alarm alert when user taps notification
-        Alert.alert(
-          '⏰ Alarm Active',
-          `${data.alarmLabel || 'Alarm'} was triggered.\n\nTime: ${new Date().toLocaleTimeString()}`,
-          [
-            { text: 'Dismiss', style: 'cancel' },
-            { text: 'Snooze (5 min)', onPress: () => handleSnooze(data.alarmId as string) }
-          ]
-        );
-        
-        console.log(`✅ Basic alarm alert shown from user tap: ${data.alarmId}`);
-      }
+      // Handle the triggered notification (reschedule if needed)
+      AlarmScheduler.handleNotificationTriggered(data.alarmId as string, false);
+      
+      // Show alarm alert when user taps notification
+      Alert.alert(
+        '⏰ ALARM ACTIVATED',
+        `${data.alarmLabel || 'Alarm'} was triggered from notification.\n\nTapped at: ${now.toLocaleTimeString()}\nOriginal Time: ${data.originalTime || 'Unknown'}`,
+        [
+          { 
+            text: 'Dismiss', 
+            style: 'cancel',
+            onPress: () => {
+              console.log(`✅ ALARM ${data.alarmId} DISMISSED from notification tap at ${new Date().toLocaleTimeString()}`);
+            }
+          },
+          { 
+            text: 'Snooze (5 min)', 
+            onPress: () => {
+              console.log(`😴 ALARM ${data.alarmId} SNOOZED from notification tap at ${new Date().toLocaleTimeString()}`);
+              handleSnooze(data.alarmId as string);
+            }
+          }
+        ]
+      );
+      
+      console.log(`📱 ALARM ALERT DISPLAYED from notification tap: ${data.alarmId}`);
     } else {
-      console.log('⚠️ User tapped notification but no valid alarm data found');
+      console.log('👆 User tapped END TIME notification - showing info only');
+      Alert.alert(
+        'Alarm Information',
+        `End time notification for: ${data.alarmLabel || 'Alarm'}`,
+        [{ text: 'OK' }]
+      );
     }
-  };
-
-  const handleSnooze = async (alarmId: string) => {
+  } else {
+    console.log('⚠️ User tapped notification but no valid alarm data found');
+  }
+  
+  console.log('👆 ===============================================');
+};  const handleSnooze = async (alarmId: string) => {
     try {
-      console.log(`⏰ Snoozing alarm ${alarmId} for 5 minutes...`);
-      
-      // Schedule a snooze notification 5 minutes from now
+      const now = new Date();
       const snoozeTime = new Date();
       snoozeTime.setMinutes(snoozeTime.getMinutes() + 5);
       
-      await Notifications.scheduleNotificationAsync({
+      console.log(`😴 ===============================================`);
+      console.log(`😴 SNOOZING ALARM ${alarmId}`);
+      console.log(`😴 ===============================================`);
+      console.log(`😴 Snooze requested at: ${now.toLocaleString()}`);
+      console.log(`😴 Will ring again at: ${snoozeTime.toLocaleString()}`);
+      console.log(`😴 Snooze duration: 5 minutes`);
+      
+      // Schedule a snooze notification 5 minutes from now
+      const snoozeNotificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: '⏰ Snooze Alarm',
           body: 'Your snoozed alarm is ringing again!',
           sound: 'default',
+          priority: Notifications.AndroidNotificationPriority.MAX,
           data: {
             alarmId,
             isSnooze: true,
             alarmLabel: 'Snoozed Alarm',
+            originalSnoozeTime: now.toISOString(),
+            snoozeEndTime: snoozeTime.toISOString(),
           },
         },
         trigger: {
@@ -218,22 +333,38 @@ const App: React.FC = () => {
         },
       });
       
-      console.log(`✅ Snooze scheduled for ${snoozeTime.toLocaleTimeString()}`);
+      console.log(`✅ SNOOZE SCHEDULED SUCCESSFULLY!`);
+      console.log(`   Snooze notification ID: ${snoozeNotificationId}`);
+      console.log(`   Will trigger at: ${snoozeTime.toLocaleString()}`);
       
       Alert.alert(
         'Alarm Snoozed',
-        `Alarm will ring again at ${snoozeTime.toLocaleTimeString()}`,
-        [{ text: 'OK' }]
+        `Alarm will ring again at ${snoozeTime.toLocaleTimeString()}\n\nSnoozed for 5 minutes`,
+        [{ 
+          text: 'OK',
+          onPress: () => {
+            console.log(`😴 User acknowledged snooze for alarm ${alarmId}`);
+          }
+        }]
       );
+      
+      console.log(`😴 ===============================================`);
+      
     } catch (error) {
       console.error('❌ Error snoozing alarm:', error);
-      Alert.alert('Error', 'Failed to snooze alarm');
+      Alert.alert('Snooze Error', 'Failed to snooze alarm. Please try again.');
     }
   };
 
   const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    console.log(`📱 App state change: ${appState.current} -> ${nextAppState}`);
+    
     if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-      console.log('📱 App has come to the foreground');
+      console.log('📱 App has come to the foreground - refreshing alarm system');
+      
+      // Re-setup notification listeners (they may have been lost)
+      setupNotificationListeners();
+      
       // Refresh alarm scheduling when app becomes active
       refreshAlarmScheduling();
     }
@@ -243,11 +374,22 @@ const App: React.FC = () => {
 
   const refreshAlarmScheduling = async () => {
     try {
-      console.log('🔄 Refreshing alarm scheduling...');
-      await AlarmScheduler.scheduleAllAlarms();
-      console.log('✅ Alarm scheduling refreshed');
+      console.log('🔄 Refreshing alarm scheduling after app state change...');
+      
+      // Force refresh to ensure everything is properly scheduled
+      await AlarmScheduler.forceRefreshScheduling();
+      
+      // Get diagnostic info
+      await AlarmScheduler.getDiagnosticInfo();
+      
+      console.log('✅ Alarm scheduling refreshed successfully');
     } catch (error) {
       console.error('❌ Error refreshing alarm scheduling:', error);
+      Alert.alert(
+        'Scheduling Error',
+        'There was a problem refreshing alarm schedules. Some alarms may not work properly.',
+        [{ text: 'OK' }]
+      );
     }
   };
 

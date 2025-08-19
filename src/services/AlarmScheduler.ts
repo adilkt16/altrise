@@ -29,14 +29,112 @@ export class AlarmScheduler {
 
       console.log(`📅 Found ${enabledAlarms.length} enabled alarms to schedule`);
 
+      // Track scheduling results
+      let successCount = 0;
+      let failureCount = 0;
+
       for (const alarm of enabledAlarms) {
-        await this.scheduleAlarm(alarm);
+        try {
+          await this.scheduleAlarm(alarm);
+          successCount++;
+        } catch (error) {
+          console.error(`❌ Failed to schedule alarm ${alarm.id}:`, error);
+          failureCount++;
+        }
       }
 
-      console.log('✅ All alarms scheduled successfully');
+      console.log(`✅ All alarms scheduled successfully: ${successCount} success, ${failureCount} failures`);
+      
+      // Validate that notifications were actually scheduled
+      await this.validateScheduledNotifications();
+      
+      // Log all scheduled notifications for debugging
+      await this.logAllScheduledNotifications();
+      
     } catch (error) {
       console.error('❌ Error scheduling alarms:', error);
       throw error;
+    }
+  }
+
+  /**
+   * Log all currently scheduled notifications for debugging
+   */
+  static async logAllScheduledNotifications(): Promise<void> {
+    try {
+      console.log('📋 ===============================================');
+      console.log('📋 ALL SCHEDULED NOTIFICATIONS');
+      console.log('📋 ===============================================');
+      
+      const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const now = new Date();
+      
+      console.log(`📋 Current time: ${now.toLocaleString()}`);
+      console.log(`📋 Total scheduled notifications: ${allScheduled.length}`);
+      
+      if (allScheduled.length === 0) {
+        console.log('📋 No notifications currently scheduled');
+      } else {
+        allScheduled.forEach((notification: any, index: number) => {
+          const trigger = notification.trigger as any;
+          const triggerDate = trigger?.date ? new Date(trigger.date) : null;
+          const timeUntil = triggerDate ? Math.round((triggerDate.getTime() - now.getTime()) / 60000) : null;
+          
+          console.log(`📋 ${index + 1}. ${notification.identifier}`);
+          console.log(`    Title: ${notification.content.title}`);
+          console.log(`    Trigger: ${triggerDate ? triggerDate.toLocaleString() : 'Unknown'}`);
+          console.log(`    Time until: ${timeUntil !== null ? timeUntil + ' minutes' : 'Unknown'}`);
+          if (notification.content.data) {
+            console.log(`    Alarm ID: ${notification.content.data.alarmId || 'Unknown'}`);
+            console.log(`    Is End Time: ${notification.content.data.isEndTime || false}`);
+          }
+          console.log('');
+        });
+      }
+      
+      console.log('📋 ===============================================');
+      
+    } catch (error) {
+      console.error('❌ Error logging scheduled notifications:', error);
+    }
+  }
+
+  /**
+   * Validate that scheduled notifications actually exist in the system
+   */
+  static async validateScheduledNotifications(): Promise<void> {
+    try {
+      console.log('🔍 Validating scheduled notifications...');
+      
+      const systemScheduled = await Notifications.getAllScheduledNotificationsAsync();
+      console.log(`📋 System has ${systemScheduled.length} scheduled notifications`);
+      
+      // Check each alarm's notifications
+      let totalTracked = 0;
+      let validNotifications = 0;
+      
+      this.scheduledNotifications.forEach((notifications, alarmId) => {
+        totalTracked += notifications.length;
+        
+        notifications.forEach(notification => {
+          const exists = systemScheduled.find(n => n.identifier === notification.notificationId);
+          if (exists) {
+            validNotifications++;
+            console.log(`✅ Alarm ${alarmId}: notification ${notification.notificationId} confirmed in system`);
+          } else {
+            console.warn(`⚠️ Alarm ${alarmId}: notification ${notification.notificationId} NOT found in system!`);
+          }
+        });
+      });
+      
+      console.log(`📊 Validation: ${validNotifications}/${totalTracked} tracked notifications exist in system`);
+      
+      if (validNotifications !== totalTracked) {
+        console.warn('⚠️ Some tracked notifications are missing from system - this may cause reliability issues');
+      }
+      
+    } catch (error) {
+      console.error('❌ Error validating scheduled notifications:', error);
     }
   }
 
@@ -263,11 +361,19 @@ export class AlarmScheduler {
         ? 'Your alarm period has ended'
         : 'Wake up! Your alarm is ringing';
 
-      console.log(`📱 Scheduling notification:`);
+      console.log(`📱 SCHEDULING NOTIFICATION:`);
+      console.log(`   Alarm ID: ${alarm.id}`);
+      console.log(`   Label: ${alarm.label || 'Unnamed'}`);
       console.log(`   Title: ${title}`);
       console.log(`   Body: ${body}`);
-      console.log(`   Trigger: ${triggerDate.toLocaleString()}`);
-      console.log(`   In ${Math.round((triggerDate.getTime() - now.getTime()) / 1000)} seconds`);
+      console.log(`   Current Time: ${now.toLocaleString()}`);
+      console.log(`   Trigger Time: ${triggerDate.toLocaleString()}`);
+      console.log(`   Time Until Trigger: ${Math.round((triggerDate.getTime() - now.getTime()) / 1000)} seconds`);
+      console.log(`   Is End Time: ${isEndTime}`);
+      console.log(`   Repeat Days: ${alarm.repeatDays?.join(', ') || 'None (one-time)'}`);
+      if (alarm.endTime) {
+        console.log(`   End Time: ${alarm.endTime}`);
+      }
 
       const notificationContent: Notifications.NotificationContentInput = {
         title,
@@ -280,6 +386,13 @@ export class AlarmScheduler {
           puzzleType: alarm.puzzleType,
           alarmLabel: alarm.label,
           triggerTime: triggerDate.toISOString(),
+          originalTime: alarm.time,
+          repeatDays: alarm.repeatDays,
+          endTime: alarm.endTime,
+          // Enhanced tracking data
+          notificationCreatedAt: now.toISOString(),
+          expectedTriggerTime: triggerDate.toISOString(),
+          schedulingTimestamp: Date.now(),
         },
         ...(Platform.OS === 'android' && {
           channelId: 'alarms',
@@ -303,9 +416,11 @@ export class AlarmScheduler {
 
       const notificationId = await Notifications.scheduleNotificationAsync(notificationRequest);
 
-      console.log(`✅ Notification scheduled successfully!`);
-      console.log(`   ID: ${notificationId}`);
-      console.log(`   Will trigger: ${triggerDate.toLocaleString()}`);
+      console.log(`✅ NOTIFICATION SCHEDULED SUCCESSFULLY!`);
+      console.log(`   Notification ID: ${notificationId}`);
+      console.log(`   Will trigger at: ${triggerDate.toLocaleString()}`);
+      console.log(`   Alarm will ${alarm.repeatDays?.length ? 'REPEAT on days: ' + alarm.repeatDays.join(', ') : 'be ONE-TIME'}`);
+      console.log(`   Next check in: ${Math.round((triggerDate.getTime() - now.getTime()) / 60000)} minutes`);
       
       // Verify it was scheduled
       const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
@@ -330,6 +445,60 @@ export class AlarmScheduler {
       }
       
       return null;
+    }
+  }
+
+  /**
+   * Handle notification that has triggered - reschedule if needed
+   */
+  static async handleNotificationTriggered(alarmId: string, isEndTime: boolean = false): Promise<void> {
+    try {
+      console.log(`🔔 NOTIFICATION TRIGGERED for alarm ${alarmId}, isEndTime: ${isEndTime}`);
+      
+      if (isEndTime) {
+        console.log(`🔚 End time notification triggered for alarm ${alarmId} - no rescheduling needed`);
+        return;
+      }
+      
+      // Get the alarm from storage
+      const alarm = await StorageService.getAlarmById(alarmId);
+      if (!alarm) {
+        console.warn(`⚠️ Could not find alarm ${alarmId} in storage for rescheduling`);
+        return;
+      }
+      
+      if (!alarm.isEnabled) {
+        console.log(`⏸️ Alarm ${alarmId} is disabled - not rescheduling`);
+        return;
+      }
+      
+      // Check if this is a repeating alarm
+      if (alarm.repeatDays && alarm.repeatDays.length > 0) {
+        console.log(`🔄 RESCHEDULING REPEATING ALARM ${alarmId}...`);
+        console.log(`   Repeat days: ${alarm.repeatDays.join(', ')}`);
+        
+        // Remove the old scheduled notification from tracking
+        const existingNotifications = this.scheduledNotifications.get(alarmId) || [];
+        const updatedNotifications = existingNotifications.filter(n => !n.isEndTimeNotification);
+        this.scheduledNotifications.set(alarmId, updatedNotifications);
+        
+        // Schedule the next occurrence
+        await this.scheduleAlarm(alarm);
+        
+        console.log(`✅ Repeating alarm ${alarmId} rescheduled successfully`);
+      } else {
+        console.log(`🚫 One-time alarm ${alarmId} triggered - removing from schedule`);
+        
+        // Remove from tracking since it's a one-time alarm
+        this.scheduledNotifications.delete(alarmId);
+        
+        // Optionally disable the alarm in storage
+        await StorageService.updateAlarm(alarmId, { isEnabled: false });
+        console.log(`⏸️ One-time alarm ${alarmId} disabled after triggering`);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Error handling triggered notification for alarm ${alarmId}:`, error);
     }
   }
 
@@ -361,6 +530,180 @@ export class AlarmScheduler {
     });
 
     return nextTime;
+  }
+
+  /**
+   * DIAGNOSTIC UTILITIES - For debugging notification issues
+   */
+
+  /**
+   * Get comprehensive diagnostic information
+   */
+  static async getDiagnosticInfo(): Promise<any> {
+    try {
+      const systemScheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const permissions = await Notifications.getPermissionsAsync();
+      const alarms = await StorageService.getAllAlarms();
+      
+      const diagnostics = {
+        timestamp: new Date().toISOString(),
+        permissions: permissions,
+        systemScheduledCount: systemScheduled.length,
+        systemScheduled: systemScheduled.map(n => ({
+          id: n.identifier,
+          title: n.content.title,
+          trigger: n.trigger,
+          data: n.content.data,
+        })),
+        trackedAlarmsCount: this.scheduledNotifications.size,
+        trackedAlarms: Array.from(this.scheduledNotifications.entries()).map(([alarmId, notifications]) => ({
+          alarmId,
+          notificationCount: notifications.length,
+          notifications: notifications.map(n => ({
+            id: n.notificationId,
+            scheduledFor: n.scheduledFor.toISOString(),
+            isEndTime: n.isEndTimeNotification,
+          })),
+        })),
+        storedAlarmsCount: alarms.length,
+        storedAlarms: alarms.map(a => ({
+          id: a.id,
+          label: a.label,
+          time: a.time,
+          enabled: a.isEnabled,
+          repeatDays: a.repeatDays,
+        })),
+      };
+      
+      console.log('🔍 DIAGNOSTIC INFO:');
+      console.log(JSON.stringify(diagnostics, null, 2));
+      
+      return diagnostics;
+    } catch (error) {
+      console.error('❌ Error getting diagnostic info:', error);
+      return { 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        timestamp: new Date().toISOString()
+      };
+    }
+  }
+
+  /**
+   * Test immediate notification (for debugging)
+   */
+  static async testImmediateNotification(): Promise<string | null> {
+    try {
+      console.log('🧪 Testing immediate notification...');
+      
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🧪 Test Notification',
+          body: 'If you see this, immediate notifications work!',
+          sound: 'default',
+          data: {
+            test: true,
+            timestamp: new Date().toISOString(),
+          },
+        },
+        trigger: null, // Immediate
+      });
+      
+      console.log(`✅ Test notification scheduled: ${notificationId}`);
+      return notificationId;
+    } catch (error) {
+      console.error('❌ Error testing immediate notification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Test scheduled notification (for debugging)
+   */
+  static async testScheduledNotification(delaySeconds: number = 10): Promise<string | null> {
+    try {
+      console.log(`🧪 Testing scheduled notification in ${delaySeconds} seconds...`);
+      
+      const triggerTime = new Date();
+      triggerTime.setSeconds(triggerTime.getSeconds() + delaySeconds);
+      
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🧪 Test Scheduled Notification',
+          body: `This notification was scheduled ${delaySeconds} seconds ago`,
+          sound: 'default',
+          data: {
+            test: true,
+            scheduledFor: triggerTime.toISOString(),
+            timestamp: new Date().toISOString(),
+          },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: triggerTime,
+        },
+      });
+      
+      console.log(`✅ Test scheduled notification: ${notificationId} for ${triggerTime.toLocaleTimeString()}`);
+      return notificationId;
+    } catch (error) {
+      console.error('❌ Error testing scheduled notification:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Clean up orphaned notifications (notifications in system but not tracked)
+   */
+  static async cleanupOrphanedNotifications(): Promise<void> {
+    try {
+      console.log('🧹 Cleaning up orphaned notifications...');
+      
+      const systemScheduled = await Notifications.getAllScheduledNotificationsAsync();
+      const trackedIds = new Set<string>();
+      
+      // Collect all tracked notification IDs
+      this.scheduledNotifications.forEach(notifications => {
+        notifications.forEach(n => trackedIds.add(n.notificationId));
+      });
+      
+      // Find orphaned notifications
+      const orphaned = systemScheduled.filter(n => !trackedIds.has(n.identifier));
+      
+      console.log(`🔍 Found ${orphaned.length} orphaned notifications`);
+      
+      // Cancel orphaned notifications
+      for (const notification of orphaned) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        console.log(`🧹 Cleaned up orphaned notification: ${notification.identifier}`);
+      }
+      
+      console.log(`✅ Cleanup complete: removed ${orphaned.length} orphaned notifications`);
+    } catch (error) {
+      console.error('❌ Error cleaning up orphaned notifications:', error);
+    }
+  }
+
+  /**
+   * Force refresh all alarm scheduling (useful after app restart)
+   */
+  static async forceRefreshScheduling(): Promise<void> {
+    try {
+      console.log('🔄 Force refreshing all alarm scheduling...');
+      
+      // Clear in-memory tracking
+      this.scheduledNotifications.clear();
+      
+      // Cancel all system notifications
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      
+      // Re-schedule everything
+      await this.scheduleAllAlarms();
+      
+      console.log('✅ Force refresh complete');
+    } catch (error) {
+      console.error('❌ Error force refreshing scheduling:', error);
+      throw error;
+    }
   }
 
   /**
@@ -404,18 +747,19 @@ export class AlarmScheduler {
         console.log('📱 Android notification channel created');
       }
       
-      // Set notification handler for immediate display
+      // Set notification handler for immediate display (using new API)
       Notifications.setNotificationHandler({
         handleNotification: async (notification) => {
           console.log('🔔 Notification handler called:', notification.request.identifier);
           console.log('📱 Notification content:', notification.request.content.title);
+          console.log('📊 Notification data:', JSON.stringify(notification.request.content.data, null, 2));
           
+          // Use new API instead of deprecated shouldShowAlert
           return {
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-            shouldShowBanner: true,
-            shouldShowList: true,
+            shouldShowBanner: true,  // Show notification banner
+            shouldShowList: true,    // Show in notification list  
+            shouldPlaySound: true,   // Play notification sound
+            shouldSetBadge: false,   // Don't set app badge
           };
         },
       });

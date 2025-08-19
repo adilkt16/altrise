@@ -17,13 +17,22 @@ export class AlarmService {
    * Create a new alarm with automatic scheduling
    */
   static async createAlarm(alarmData: CreateAlarmData): Promise<Alarm> {
+    console.log('➕ Creating new alarm:', alarmData.label || 'Unnamed');
+    
     const alarm = await StorageService.createAlarm(alarmData);
     
     // Schedule the alarm if it's enabled
     if (alarm.isEnabled) {
+      console.log(`📅 Scheduling new alarm ${alarm.id}...`);
       await AlarmScheduler.scheduleAlarm(alarm);
+      
+      // Validate the scheduling worked
+      await AlarmScheduler.validateScheduledNotifications();
+    } else {
+      console.log(`⏸️ Alarm ${alarm.id} created but disabled, not scheduling`);
     }
     
+    console.log(`✅ Alarm ${alarm.id} created successfully`);
     return alarm;
   }
 
@@ -31,11 +40,28 @@ export class AlarmService {
    * Update an existing alarm with rescheduling
    */
   static async updateAlarm(id: string, updates: Partial<Alarm>): Promise<Alarm | null> {
+    console.log(`📝 Updating alarm ${id}:`, updates);
+    
+    // Cancel existing scheduling first
+    await AlarmScheduler.cancelAlarm(id);
+    
     const updatedAlarm = await StorageService.updateAlarm(id, updates);
     
     if (updatedAlarm) {
       // Reschedule the alarm with new settings
-      await AlarmScheduler.rescheduleAlarm(updatedAlarm);
+      if (updatedAlarm.isEnabled) {
+        console.log(`📅 Rescheduling updated alarm ${id}...`);
+        await AlarmScheduler.scheduleAlarm(updatedAlarm);
+        
+        // Validate the rescheduling worked
+        await AlarmScheduler.validateScheduledNotifications();
+      } else {
+        console.log(`⏸️ Updated alarm ${id} is disabled, not scheduling`);
+      }
+      
+      console.log(`✅ Alarm ${id} updated successfully`);
+    } else {
+      console.warn(`⚠️ Failed to update alarm ${id} - alarm not found`);
     }
     
     return updatedAlarm;
@@ -45,22 +71,44 @@ export class AlarmService {
    * Delete an alarm with cancellation
    */
   static async deleteAlarm(id: string): Promise<boolean> {
+    console.log(`🗑️ Deleting alarm ${id}...`);
+    
     // Cancel the scheduled alarm first
     await AlarmScheduler.cancelAlarm(id);
     
     // Then delete from storage
-    return await StorageService.deleteAlarm(id);
+    const success = await StorageService.deleteAlarm(id);
+    
+    if (success) {
+      console.log(`✅ Alarm ${id} deleted successfully`);
+      
+      // Clean up any orphaned notifications
+      await AlarmScheduler.cleanupOrphanedNotifications();
+    } else {
+      console.warn(`⚠️ Failed to delete alarm ${id}`);
+    }
+    
+    return success;
   }
 
   /**
    * Toggle alarm on/off with scheduling
    */
   static async toggleAlarm(id: string): Promise<Alarm | null> {
+    console.log(`🔄 Toggling alarm ${id}...`);
+    
     const updatedAlarm = await StorageService.toggleAlarm(id);
     
     if (updatedAlarm) {
       // Reschedule based on new enabled state
       await AlarmScheduler.rescheduleAlarm(updatedAlarm);
+      
+      // Validate the scheduling worked
+      await AlarmScheduler.validateScheduledNotifications();
+      
+      console.log(`✅ Alarm ${id} toggled to ${updatedAlarm.isEnabled ? 'enabled' : 'disabled'}`);
+    } else {
+      console.warn(`⚠️ Failed to toggle alarm ${id} - alarm not found`);
     }
     
     return updatedAlarm;

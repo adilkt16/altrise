@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { StorageService } from '../services/StorageService';
+import { AlarmService } from '../services/AlarmService';
 import { Alarm, WeekDay, PuzzleType, UpdateAlarmData } from '../types';
 import { formatTimeForCard } from '../utils/timeUtils';
 
@@ -92,7 +92,7 @@ const EditAlarmScreen: React.FC<EditAlarmScreenProps> = ({ navigation, route }) 
   const loadAlarm = async () => {
     try {
       setLoading(true);
-      const alarmData = await StorageService.getAlarmById(alarmId);
+      const alarmData = await AlarmService.getAlarmById(alarmId);
       
       if (!alarmData) {
         Alert.alert('Error', 'Alarm not found', [
@@ -182,6 +182,9 @@ const EditAlarmScreen: React.FC<EditAlarmScreenProps> = ({ navigation, route }) 
 
     setSaving(true);
     try {
+      console.log(`📝 [EditAlarmScreen] Starting alarm update - ID: ${alarmId}`);
+      console.log(`📝 [EditAlarmScreen] Update started at: ${new Date().toISOString()}`);
+      
       const updateData: UpdateAlarmData = {
         time: formatTime(alarmTime),
         endTime: hasEndTime && endTime ? formatTime(endTime) : undefined,
@@ -192,17 +195,24 @@ const EditAlarmScreen: React.FC<EditAlarmScreenProps> = ({ navigation, route }) 
         label: label.trim() || undefined,
       };
 
-      const updatedAlarm = await StorageService.updateAlarm(alarmId, updateData);
+      console.log(`📝 [EditAlarmScreen] Update data:`, updateData);
+
+      const updatedAlarm = await AlarmService.updateAlarm(alarmId, updateData);
+      
+      console.log(`📝 [EditAlarmScreen] Update completed at: ${new Date().toISOString()}`);
+      console.log(`📝 [EditAlarmScreen] Updated alarm result:`, updatedAlarm ? 'SUCCESS' : 'FAILED');
       
       if (updatedAlarm) {
+        console.log(`📝 [EditAlarmScreen] Alarm successfully updated with scheduling!`);
         Alert.alert('Success', 'Alarm updated successfully', [
           { text: 'OK', onPress: () => navigation?.goBack() }
         ]);
       } else {
+        console.error(`❌ [EditAlarmScreen] Failed to update alarm`);
         Alert.alert('Error', 'Failed to update alarm. Please try again.');
       }
     } catch (error) {
-      console.error('Error updating alarm:', error);
+      console.error('❌ [EditAlarmScreen] Error updating alarm:', error);
       Alert.alert('Error', 'Failed to update alarm. Please try again.');
     } finally {
       setSaving(false);

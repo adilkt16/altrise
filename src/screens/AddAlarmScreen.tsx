@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { StorageService } from '../services/StorageService';
+import { AlarmService } from '../services/AlarmService';
 import { CreateAlarmData, WeekDay, PuzzleType } from '../types';
 import { formatTimeForCard } from '../utils/timeUtils';
 
@@ -123,6 +123,16 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
 
     setSaving(true);
     try {
+      console.log('➕ ===============================================');
+      console.log('➕ CREATING NEW ALARM');
+      console.log('➕ ===============================================');
+      console.log(`➕ Label: ${label.trim() || 'Unnamed'}`);
+      console.log(`➕ Time: ${formatTime(alarmTime)}`);
+      console.log(`➕ End Time: ${hasEndTime && endTime ? formatTime(endTime) : 'None'}`);
+      console.log(`➕ Repeat Days: ${repeatDays.join(', ') || 'None (one-time)'}`);
+      console.log(`➕ Puzzle Type: ${puzzleType}`);
+      console.log(`➕ Created At: ${new Date().toLocaleString()}`);
+      
       const alarmData: CreateAlarmData = {
         time: formatTime(alarmTime),
         endTime: hasEndTime && endTime ? formatTime(endTime) : undefined,
@@ -134,12 +144,17 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
         label: label.trim() || undefined,
       };
 
-      await StorageService.createAlarm(alarmData);
+      // Use AlarmService instead of StorageService to trigger scheduling
+      const createdAlarm = await AlarmService.createAlarm(alarmData);
+      
+      console.log(`✅ NEW ALARM CREATED SUCCESSFULLY: ${createdAlarm.id}`);
+      console.log('➕ ===============================================');
+      
       Alert.alert('Success', 'Alarm created successfully', [
         { text: 'OK', onPress: () => navigation?.goBack() }
       ]);
     } catch (error) {
-      console.error('Error creating alarm:', error);
+      console.error('❌ Error creating alarm:', error);
       Alert.alert('Error', 'Failed to create alarm. Please try again.');
     } finally {
       setSaving(false);
