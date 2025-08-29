@@ -21,7 +21,12 @@ interface AddAlarmScreenProps {
 
 const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
   const [alarmTime, setAlarmTime] = useState(new Date());
-  const [endTime, setEndTime] = useState<Date | null>(null);
+  // Set default end time to 1 hour after start time
+  const [endTime, setEndTime] = useState(() => {
+    const defaultEndTime = new Date();
+    defaultEndTime.setHours(defaultEndTime.getHours() + 1);
+    return defaultEndTime;
+  });
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [timePickerMode, setTimePickerMode] = useState<'start' | 'end'>('start');
@@ -30,7 +35,6 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
   const [puzzleType, setPuzzleType] = useState<PuzzleType>(PuzzleType.NONE);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
   const [soundFile, setSoundFile] = useState('default_alarm.mp3');
-  const [hasEndTime, setHasEndTime] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const dayNames = [
@@ -74,9 +78,11 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
     if (selectedTime) {
       if (timePickerMode === 'start') {
         setAlarmTime(selectedTime);
-        // If end time exists and is now before start time, reset it
-        if (endTime && selectedTime >= endTime) {
-          setEndTime(null);
+        // If end time is now before start time, adjust it to be 1 hour after start time
+        if (selectedTime >= endTime) {
+          const newEndTime = new Date(selectedTime);
+          newEndTime.setHours(newEndTime.getHours() + 1);
+          setEndTime(newEndTime);
         }
       } else {
         // Validate end time is after start time
@@ -109,7 +115,7 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
   };
 
   const validateForm = (): boolean => {
-    if (hasEndTime && endTime && endTime <= alarmTime) {
+    if (endTime <= alarmTime) {
       Alert.alert('Validation Error', 'End time must be after start time');
       return false;
     }
@@ -128,14 +134,14 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
       console.log('➕ ===============================================');
       console.log(`➕ Label: ${label.trim() || 'Unnamed'}`);
       console.log(`➕ Time: ${formatTime(alarmTime)}`);
-      console.log(`➕ End Time: ${hasEndTime && endTime ? formatTime(endTime) : 'None'}`);
+      console.log(`➕ End Time: ${formatTime(endTime)}`);
       console.log(`➕ Repeat Days: ${repeatDays.join(', ') || 'None (one-time)'}`);
       console.log(`➕ Puzzle Type: ${puzzleType}`);
       console.log(`➕ Created At: ${new Date().toLocaleString()}`);
       
       const alarmData: CreateAlarmData = {
         time: formatTime(alarmTime),
-        endTime: hasEndTime && endTime ? formatTime(endTime) : undefined,
+        endTime: formatTime(endTime),
         isEnabled: true,
         repeatDays,
         puzzleType,
@@ -182,26 +188,15 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.endTimeContainer}>
-            <View style={styles.switchRow}>
-              <Text style={styles.switchLabel}>Set End Time</Text>
-              <Switch
-                value={hasEndTime}
-                onValueChange={setHasEndTime}
-                trackColor={{ false: '#e2e8f0', true: '#6366f1' }}
-                thumbColor={hasEndTime ? '#ffffff' : '#f1f5f9'}
-              />
-            </View>
-            
-            {hasEndTime && (
-              <TouchableOpacity 
-                style={styles.timeButton}
-                onPress={() => showTimePickerModal('end')}
-              >
-                <Text style={styles.timeButtonText}>
-                  {endTime ? formatTimeForCard(formatTime(endTime), false) : 'Select End Time'}
-                </Text>
-              </TouchableOpacity>
-            )}
+            <Text style={styles.switchLabel}>End Time</Text>
+            <TouchableOpacity 
+              style={styles.timeButton}
+              onPress={() => showTimePickerModal('end')}
+            >
+              <Text style={styles.timeButtonText}>
+                {formatTimeForCard(formatTime(endTime), false)}
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 

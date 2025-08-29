@@ -43,6 +43,8 @@ const DEFAULT_ALARM_STATS: AlarmStats = {
   averageSolveTime: 0,
   puzzleStats: {
     [PuzzleType.NONE]: { attempted: 0, completed: 0, averageTime: 0 },
+    [PuzzleType.BASIC_MATH]: { attempted: 0, completed: 0, averageTime: 0 },
+    [PuzzleType.NUMBER_SEQUENCE]: { attempted: 0, completed: 0, averageTime: 0 },
     [PuzzleType.MATH]: { attempted: 0, completed: 0, averageTime: 0 },
     [PuzzleType.MEMORY]: { attempted: 0, completed: 0, averageTime: 0 },
     [PuzzleType.PATTERN]: { attempted: 0, completed: 0, averageTime: 0 },

@@ -134,8 +134,16 @@ export class AlarmService {
   static async createQuickAlarm(time: string, label?: string): Promise<Alarm> {
     const settings = await StorageService.getUserSettings();
     
+    // Calculate endTime as 1 hour after start time
+    const [hours, minutes] = time.split(':').map(Number);
+    const startDate = new Date();
+    startDate.setHours(hours, minutes, 0, 0);
+    const endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Add 1 hour
+    const endTime = `${endDate.getHours().toString().padStart(2, '0')}:${endDate.getMinutes().toString().padStart(2, '0')}`;
+    
     const alarmData: CreateAlarmData = {
       time,
+      endTime,
       isEnabled: true,
       repeatDays: [], // One-time alarm
       puzzleType: settings.defaultPuzzleType,

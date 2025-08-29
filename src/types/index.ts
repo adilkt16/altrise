@@ -3,7 +3,7 @@
 export interface Alarm {
   id: string;
   time: string; // Format: "HH:MM" (24-hour format)
-  endTime?: string; // Optional end time for alarms with duration
+  endTime: string; // Required end time for alarms with duration
   isEnabled: boolean;
   repeatDays: WeekDay[]; // Array of days when alarm repeats
   puzzleType: PuzzleType;

@@ -17,6 +17,7 @@ import AlarmModal, { AlarmModalData } from './src/components/AlarmModal';
 import { AlarmScheduler } from './src/services/AlarmScheduler';
 import { PermissionService } from './src/services/PermissionService';
 import modalManager, { AlarmModalState } from './src/services/AlarmModalManager';
+import { checkForActiveAlarms } from './src/utils/activeAlarmChecker';
 
 // Configure notification behavior globally
 Notifications.setNotificationHandler({
@@ -241,6 +242,71 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Check for active alarms and automatically show modal if needed
+   */
+  const checkAndShowActiveAlarm = async () => {
+    try {
+      console.log('🔍 [App] Checking for active alarms on startup...');
+      const activeAlarmInfo = await checkForActiveAlarms();
+      
+      if (activeAlarmInfo) {
+        console.log('🚨 [App] Found active alarm during startup:', activeAlarmInfo.alarm.id);
+        console.log(`🚨 [App] Alarm: ${activeAlarmInfo.alarm.label || 'Unnamed'}`);
+        console.log(`🚨 [App] Time until end: ${Math.round(activeAlarmInfo.timeUntilEnd / 1000)} seconds`);
+        
+        // Map puzzle type to modal-compatible type
+        const mapPuzzleType = (puzzleType: any): 'none' | 'basic_math' | 'number_sequence' => {
+          switch (puzzleType) {
+            case 'math':
+            case 'basic_math':
+              return 'basic_math';
+            case 'sequence':
+            case 'number_sequence':
+              return 'number_sequence';
+            case 'none':
+              return 'none';
+            default:
+              return 'basic_math'; // Default to basic_math
+          }
+        };
+        
+        // Prepare modal data
+        const modalData: AlarmModalData = {
+          alarmId: activeAlarmInfo.alarm.id,
+          title: activeAlarmInfo.alarm.label || 'Alarm',
+          label: activeAlarmInfo.alarm.label,
+          originalTime: activeAlarmInfo.alarm.time,
+          endTime: activeAlarmInfo.alarm.endTime,
+          puzzleType: mapPuzzleType(activeAlarmInfo.alarm.puzzleType),
+          onDismiss: () => {
+            console.log(`✅ [App] Active alarm ${activeAlarmInfo.alarm.id} dismissed via modal`);
+            modalManager.hideAlarmModal();
+          },
+          onSnooze: () => {
+            console.log(`😴 [App] Active alarm ${activeAlarmInfo.alarm.id} snoozed via modal`);
+            modalManager.hideAlarmModal();
+            // TODO: Implement snooze functionality if needed
+          }
+        };
+        
+        // Show the modal
+        console.log('🚨 [App] Showing alarm modal for active alarm...');
+        const success = await modalManager.showAlarmModal(modalData);
+        
+        if (success) {
+          console.log('✅ [App] Active alarm modal displayed successfully');
+        } else {
+          console.log('❌ [App] Failed to display active alarm modal');
+        }
+      } else {
+        console.log('✅ [App] No active alarms found during startup');
+      }
+    } catch (error) {
+      console.error('❌ [App] Error checking for active alarms:', error);
+    }
+  };
+
   const initializeAlarmSystemWithLifecycle = async () => {
     try {
       console.log('🚀 ===============================================');
@@ -319,6 +385,9 @@ const App: React.FC = () => {
       
       // Set up notification categories for enhanced interaction
       await setupNotificationCategories();
+      
+      // Check for active alarms and show modal if needed
+      await checkAndShowActiveAlarm();
       
       console.log('✅ Enhanced alarm system initialized successfully');
       
@@ -451,6 +520,10 @@ const App: React.FC = () => {
       // Refresh alarm scheduling when app becomes active
       console.log('🔄 Refreshing alarm scheduling...');
       refreshAlarmScheduling();
+      
+      // Check for active alarms when app returns to foreground
+      console.log('🔍 Checking for active alarms after resuming...');
+      checkAndShowActiveAlarm();
       
       // Check if any notifications were triggered while app was backgrounded
       console.log('🔍 Checking for missed notifications...');

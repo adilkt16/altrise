@@ -20,7 +20,7 @@ export interface AlarmModalData {
   title: string;
   label?: string;
   originalTime: string;
-  endTime?: string;
+  endTime: string; // Required end time for alarms
   puzzleType: 'none' | 'basic_math' | 'number_sequence';
   onDismiss: () => void;
   onSnooze: () => void;
@@ -188,20 +188,18 @@ export const AlarmModal: React.FC<{
       }
 
       // Set up auto-dismiss timer for end time
-      if (modalData.endTime) {
-        const endTime = new Date();
-        const [hours, minutes] = modalData.endTime.split(':');
-        endTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-        
-        const timeUntilEnd = endTime.getTime() - currentTime.getTime();
-        if (timeUntilEnd > 0) {
-          console.log(`⏰ Auto-dismiss scheduled for: ${endTime.toLocaleString()}`);
-          const timer = setTimeout(() => {
-            console.log(`⏰ Auto-dismissing alarm at end time: ${endTime.toLocaleString()}`);
-            handleAutoDismiss();
-          }, timeUntilEnd);
-          setEndTimeTimer(timer);
-        }
+      const endTime = new Date();
+      const [hours, minutes] = modalData.endTime.split(':');
+      endTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      const timeUntilEnd = endTime.getTime() - currentTime.getTime();
+      if (timeUntilEnd > 0) {
+        console.log(`⏰ Auto-dismiss scheduled for: ${endTime.toLocaleString()}`);
+        const timer = setTimeout(() => {
+          console.log(`⏰ Auto-dismissing alarm at end time: ${endTime.toLocaleString()}`);
+          handleAutoDismiss();
+        }, timeUntilEnd);
+        setEndTimeTimer(timer);
       }
 
       // Show modal with retry mechanism
