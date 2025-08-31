@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import AlarmCard from '../components/AlarmCard';
+import NextAlarmCountdown from '../components/NextAlarmCountdown';
 import { StorageService } from '../services/StorageService';
 import { Alarm } from '../types';
 
@@ -120,6 +121,11 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
     navigation.navigate('AddAlarm');
   };
 
+  const handleNextAlarmPress = (alarm: Alarm) => {
+    // Navigate to edit screen for the next alarm
+    handleEditAlarm(alarm);
+  };
+
   const renderAlarmItem = ({ item }: { item: Alarm }) => (
     <AlarmCard
       alarm={item}
@@ -159,6 +165,12 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
       
       {renderHeader()}
+      
+      {/* Next Alarm Countdown */}
+      <NextAlarmCountdown 
+        alarms={alarms} 
+        onAlarmPress={handleNextAlarmPress}
+      />
       
       <FlatList
         data={alarms}
