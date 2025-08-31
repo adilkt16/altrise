@@ -5,6 +5,7 @@ export type RootStackParamList = {
   EditAlarm: {
     alarmId: string;
   };
+  Settings: undefined;
 };
 
 export type HomeScreenNavigationProp = any;

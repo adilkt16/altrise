@@ -4,11 +4,13 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Alert, AppState, AppStateStatus, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Import screens
 import HomeScreen from './src/screens/HomeScreen';
 import AddAlarmScreen from './src/screens/AddAlarmScreen';
 import EditAlarmScreen from './src/screens/EditAlarmScreen';
+import SettingsScreen from './src/screens/SettingsScreen';
 
 // Import components
 import AlarmModal, { AlarmModalData } from './src/components/AlarmModal';
@@ -671,6 +673,13 @@ const App: React.FC = () => {
     if (data?.alarmId && typeof data.alarmId === 'string') {
       console.log(`⏰ ALARM ${data.alarmId} TRIGGERED at ${now.toLocaleTimeString()}`);
       
+      // Save last alarm trigger for debugging
+      try {
+        await AsyncStorage.setItem('last_alarm_trigger', now.toISOString());
+      } catch (error) {
+        console.error('Failed to save last alarm trigger:', error);
+      }
+      
       // Log timing information
       if (data.expectedTriggerTime && typeof data.expectedTriggerTime === 'string') {
         const expectedTime = new Date(data.expectedTriggerTime);
@@ -928,6 +937,11 @@ Time: ${now.toLocaleTimeString()}`,
             name="EditAlarm" 
             component={EditAlarmScreen} 
             options={{ title: 'Edit Alarm' }}
+          />
+          <Stack.Screen 
+            name="Settings" 
+            component={SettingsScreen} 
+            options={{ title: 'Settings' }}
           />
         </Stack.Navigator>
       </NavigationContainer>

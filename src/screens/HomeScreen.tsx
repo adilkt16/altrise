@@ -149,14 +149,22 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
   const renderHeader = () => (
     <View style={styles.header}>
       <Text style={styles.title}>My Alarms</Text>
-      <TouchableOpacity 
-        style={styles.formatToggle}
-        onPress={() => setUse24HourFormat(!use24HourFormat)}
-      >
-        <Text style={styles.formatToggleText}>
-          {use24HourFormat ? '24h' : '12h'}
-        </Text>
-      </TouchableOpacity>
+      <View style={styles.headerButtons}>
+        <TouchableOpacity 
+          style={styles.formatToggle}
+          onPress={() => setUse24HourFormat(!use24HourFormat)}
+        >
+          <Text style={styles.formatToggleText}>
+            {use24HourFormat ? '24h' : '12h'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => navigation.navigate('Settings')}
+        >
+          <Text style={styles.settingsButtonText}>⚙️</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -288,6 +296,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     color: '#ffffff',
     fontWeight: 'bold',
+  },
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  settingsButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+  },
+  settingsButtonText: {
+    fontSize: 18,
   },
 });
 
