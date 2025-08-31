@@ -59,14 +59,7 @@ export enum WeekDay {
 
 export enum PuzzleType {
   NONE = 'none',
-  BASIC_MATH = 'basic_math',
-  NUMBER_SEQUENCE = 'number_sequence',
-  MATH = 'math', // Legacy support
-  MEMORY = 'memory',
-  PATTERN = 'pattern',
-  SEQUENCE = 'sequence', // Legacy support
-  QR_CODE = 'qr_code',
-  SHAKE = 'shake',
+  MATH = 'math', // Only math puzzles supported
 }
 
 export interface AlarmEvent {

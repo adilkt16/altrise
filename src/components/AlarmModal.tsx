@@ -21,7 +21,9 @@ export interface AlarmModalData {
   label?: string;
   originalTime: string;
   endTime: string; // Required end time for alarms
-  puzzleType: 'none' | 'basic_math' | 'number_sequence';
+  puzzleType: 'none' | 'math'; // Only math puzzles supported
+  soundFile: string; // Sound file identifier for alarm
+  vibrationEnabled: boolean; // Whether vibration is enabled
   onDismiss: () => void;
   onSnooze: () => void;
 }
@@ -326,18 +328,13 @@ export const AlarmModal: React.FC<{
   const generatePuzzle = (type: string): PuzzleData => {
     console.log(`🧩 [AlarmModal] Generating puzzle of type: ${type}`);
     
-    // Normalize puzzle type to handle various formats
-    const normalizedType = type.toLowerCase();
-    
-    if (normalizedType === 'basic_math' || normalizedType === 'math') {
+    if (type === 'math') {
       return generateMathPuzzle();
-    } else if (normalizedType === 'number_sequence' || normalizedType === 'sequence') {
-      return generateSequencePuzzle();
-    } else if (normalizedType === 'none') {
+    } else if (type === 'none') {
       return { question: 'No puzzle required', answer: '' };
     } else {
-      // Default to basic math for any unrecognized type
-      console.log(`🧩 [AlarmModal] Unknown puzzle type '${type}', defaulting to basic math`);
+      // Default to math for any unrecognized type
+      console.log(`🧩 [AlarmModal] Unknown puzzle type '${type}', defaulting to math`);
       return generateMathPuzzle();
     }
   };
@@ -378,41 +375,6 @@ export const AlarmModal: React.FC<{
     return {
       question,
       answer: answer.toString(),
-    };
-  };
-
-  const generateSequencePuzzle = (): PuzzleData => {
-    // Generate sequences with answers between 1-100
-    const sequences = [
-      // Arithmetic sequences with smaller numbers
-      { pattern: [2, 4, 6, 8], next: 10, description: 'even numbers' },
-      { pattern: [1, 3, 5, 7], next: 9, description: 'odd numbers' },
-      { pattern: [5, 10, 15, 20], next: 25, description: 'multiples of 5' },
-      { pattern: [3, 6, 9, 12], next: 15, description: 'multiples of 3' },
-      { pattern: [10, 20, 30, 40], next: 50, description: 'multiples of 10' },
-      // Simple addition patterns
-      { pattern: [1, 3, 6, 10], next: 15, description: '+2, +3, +4, +5' },
-      { pattern: [2, 5, 9, 14], next: 20, description: '+3, +4, +5, +6' },
-      { pattern: [1, 4, 9, 16], next: 25, description: 'perfect squares' },
-      // Fibonacci-like small sequences
-      { pattern: [1, 1, 2, 3], next: 5, description: 'Fibonacci start' },
-      { pattern: [2, 3, 5, 8], next: 13, description: 'Fibonacci sequence' },
-      // Simple doubling patterns
-      { pattern: [1, 2, 4, 8], next: 16, description: 'powers of 2' },
-      { pattern: [3, 6, 12, 24], next: 48, description: 'doubling' },
-    ];
-    
-    // Filter sequences to ensure the answer is between 1-100
-    const validSequences = sequences.filter(seq => seq.next >= 1 && seq.next <= 100);
-    const sequence = validSequences[Math.floor(Math.random() * validSequences.length)];
-    
-    const question = `${sequence.pattern.join(', ')}, ?`;
-    
-    console.log(`🔢 Sequence puzzle: ${question} (answer: ${sequence.next}, pattern: ${sequence.description})`);
-    
-    return {
-      question: `What comes next?\n${question}`,
-      answer: sequence.next.toString(),
     };
   };
 

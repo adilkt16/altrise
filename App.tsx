@@ -256,18 +256,15 @@ const App: React.FC = () => {
         console.log(`🚨 [App] Time until end: ${Math.round(activeAlarmInfo.timeUntilEnd / 1000)} seconds`);
         
         // Map puzzle type to modal-compatible type
-        const mapPuzzleType = (puzzleType: any): 'none' | 'basic_math' | 'number_sequence' => {
+        const mapPuzzleType = (puzzleType: any): 'none' | 'math' => {
           switch (puzzleType) {
             case 'math':
-            case 'basic_math':
-              return 'basic_math';
-            case 'sequence':
-            case 'number_sequence':
-              return 'number_sequence';
+            case 'basic_math': // Legacy support
+              return 'math';
             case 'none':
               return 'none';
             default:
-              return 'basic_math'; // Default to basic_math
+              return 'math'; // Default to math
           }
         };
         
@@ -279,6 +276,8 @@ const App: React.FC = () => {
           originalTime: activeAlarmInfo.alarm.time,
           endTime: activeAlarmInfo.alarm.endTime,
           puzzleType: mapPuzzleType(activeAlarmInfo.alarm.puzzleType),
+          soundFile: activeAlarmInfo.alarm.soundFile || 'alarm_default',
+          vibrationEnabled: activeAlarmInfo.alarm.vibrationEnabled ?? true,
           onDismiss: () => {
             console.log(`✅ [App] Active alarm ${activeAlarmInfo.alarm.id} dismissed via modal`);
             modalManager.hideAlarmModal();
@@ -787,6 +786,8 @@ Time: ${now.toLocaleTimeString()}`,
         originalTime: notificationData.originalTime || alarmData.time,
         endTime: alarmData.endTime,
         puzzleType: alarmData.puzzleType || 'none',
+        soundFile: alarmData.soundFile || 'alarm_default',
+        vibrationEnabled: alarmData.vibrationEnabled ?? true,
         onDismiss: () => {
           console.log(`✅ [App] Alarm ${notificationData.alarmId} dismissed via modal`);
           modalManager.hideAlarmModal();

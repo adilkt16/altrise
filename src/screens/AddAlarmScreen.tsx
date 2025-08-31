@@ -34,7 +34,7 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
   const [repeatDays, setRepeatDays] = useState<WeekDay[]>([]);
   const [puzzleType, setPuzzleType] = useState<PuzzleType>(PuzzleType.NONE);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const [soundFile, setSoundFile] = useState('default_alarm.mp3');
+  const [soundFile, setSoundFile] = useState('alarm_default');
   const [saving, setSaving] = useState(false);
 
   const dayNames = [
@@ -50,19 +50,11 @@ const AddAlarmScreen: React.FC<AddAlarmScreenProps> = ({ navigation }) => {
   const puzzleOptions = [
     { value: PuzzleType.NONE, label: 'No Puzzle' },
     { value: PuzzleType.MATH, label: 'Math Problem' },
-    { value: PuzzleType.PATTERN, label: 'Pattern Recognition' },
-    { value: PuzzleType.MEMORY, label: 'Memory Game' },
-    { value: PuzzleType.SEQUENCE, label: 'Sequence Puzzle' },
-    { value: PuzzleType.SHAKE, label: 'Shake to Dismiss' },
-    { value: PuzzleType.QR_CODE, label: 'QR Code Scan' },
   ];
 
   const soundOptions = [
-    { value: 'default_alarm.mp3', label: 'Default Alarm' },
-    { value: 'gentle_wake.mp3', label: 'Gentle Wake' },
-    { value: 'nature_sounds.mp3', label: 'Nature Sounds' },
-    { value: 'classic_bell.mp3', label: 'Classic Bell' },
-    { value: 'digital_beep.mp3', label: 'Digital Beep' },
+    { value: 'alarm_default', label: 'Default Alarm' },
+    { value: 'alarm_gentle', label: 'Gentle Wake' },
   ];
 
   const formatTime = (date: Date): string => {
