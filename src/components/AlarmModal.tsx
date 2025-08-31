@@ -14,6 +14,7 @@ import {
   Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { audioService, AudioConfig } from '../services/AudioService';
 
 export interface AlarmModalData {
   alarmId: string;
@@ -104,6 +105,7 @@ export const AlarmModal: React.FC<{
         if (nextAppState === 'background') {
           console.log(`🚨 [AlarmModal] App going to background with active modal`);
           // Modal state is preserved in modalStateRef
+          // Audio should continue playing in background
         } else if (previousState.match(/inactive|background/) && nextAppState === 'active') {
           console.log(`🚨 [AlarmModal] App returning from background with modal state`);
           // Restore modal if it was active
@@ -119,6 +121,16 @@ export const AlarmModal: React.FC<{
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription?.remove();
   }, [isVisible]);
+
+  // Cleanup effect - stop audio when component unmounts
+  useEffect(() => {
+    return () => {
+      console.log('🔊 [AlarmModal] Component unmounting - cleaning up audio');
+      audioService.stopAlarmSound().catch(error => {
+        console.error('❌ [AlarmModal] Failed to stop audio during cleanup:', error);
+      });
+    };
+  }, []);
 
   // Handle Android back button
   useEffect(() => {
@@ -169,6 +181,22 @@ export const AlarmModal: React.FC<{
       setAttempts(0);
       setModalError(null);
       fallbackSent.current = false; // Reset fallback flag for new alarm
+      
+      // Start alarm audio
+      console.log('🔊 [AlarmModal] Starting alarm audio...');
+      const audioConfig: AudioConfig = {
+        soundFile: modalData.soundFile || 'alarm_default',
+        volume: 0.8, // High volume for alarm
+        shouldLoop: true, // Loop until dismissed
+        enableVibration: modalData.vibrationEnabled
+      };
+      
+      const audioStarted = await audioService.startAlarmSound(audioConfig);
+      if (audioStarted) {
+        console.log('✅ [AlarmModal] Alarm audio started successfully');
+      } else {
+        console.error('❌ [AlarmModal] Failed to start alarm audio');
+      }
       
       // Generate puzzle if needed - only once per alarm session
       if (modalData.puzzleType !== 'none' && !puzzleGenerated) {
@@ -282,8 +310,13 @@ export const AlarmModal: React.FC<{
     }
   };
 
-  const handleModalHide = () => {
+  const handleModalHide = async () => {
     console.log('🚨 [AlarmModal] Hiding alarm modal');
+    
+    // Stop alarm audio immediately
+    console.log('🔊 [AlarmModal] Stopping alarm audio...');
+    await audioService.stopAlarmSound();
+    console.log('✅ [AlarmModal] Alarm audio stopped');
     
     setIsVisible(false);
     setShowPuzzle(false);

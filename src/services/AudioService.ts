@@ -28,6 +28,9 @@ interface SoundAsset {
  * - Sound preview functionality
  * - Memory leak prevention
  * - Cross-platform compatibility
+ * 
+ * Note: expo-av is deprecated in SDK 54+, but still functional.
+ * Future migration to expo-audio planned when stable.
  */
 class AudioService {
   private currentSound: Audio.Sound | null = null;
@@ -83,6 +86,8 @@ class AudioService {
    * Load available sound assets
    */
   private loadSoundAssets(): void {
+    // Note: For development, you need actual MP3 files in assets/sounds/
+    // These are placeholder entries - replace with actual audio files
     this.soundAssets.set('alarm_default', {
       uri: require('../../assets/sounds/alarm_default.mp3'),
       name: 'Default Alarm',
@@ -96,6 +101,7 @@ class AudioService {
     });
 
     console.log(`🔊 [AudioService] Loaded ${this.soundAssets.size} sound assets`);
+    console.log('⚠️ [AudioService] Note: Actual MP3 files required in assets/sounds/ for audio playback');
   }
 
   /**
@@ -174,6 +180,17 @@ class AudioService {
 
     } catch (error) {
       console.error('❌ [AudioService] Failed to start alarm sound:', error);
+      
+      // Provide specific error messages for common issues
+      if (error instanceof Error) {
+        if (error.message.includes('UnrecognizedInputFormatException')) {
+          console.error('🔊 [AudioService] Audio file format error - check that MP3 files exist and are valid');
+          console.error('💡 [AudioService] For development build: Place actual MP3 files in assets/sounds/');
+        } else if (error.message.includes('FileNotFound') || error.message.includes('No such file')) {
+          console.error('🔊 [AudioService] Audio file not found - check assets/sounds/ directory');
+        }
+      }
+      
       this.isPlaying = false;
       return false;
     }

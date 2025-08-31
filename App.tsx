@@ -19,6 +19,11 @@ import { PermissionService } from './src/services/PermissionService';
 import modalManager, { AlarmModalState } from './src/services/AlarmModalManager';
 import { checkForActiveAlarms } from './src/utils/activeAlarmChecker';
 
+// Import debug utilities (development only)
+if (__DEV__) {
+  import('./src/utils/AudioDebugger');
+}
+
 // Configure notification behavior globally
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
