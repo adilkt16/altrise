@@ -1,0 +1,45 @@
+{
+  "name": "altrise",
+  "version": "1.0.0",
+  "main": "expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web",
+    "eject": "expo eject"
+  },
+  "keywords": [
+    "alarm",
+    "clock",
+    "react-native",
+    "expo"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "AltRise - An Android alarm clock app built with React Native and Expo",
+  "dependencies": {
+    "@expo/metro-runtime": "^5.0.4",
+    "@react-native-async-storage/async-storage": "2.1.2",
+    "@react-native-community/datetimepicker": "8.4.1",
+    "@react-navigation/native": "^7.1.17",
+    "@react-navigation/stack": "^7.4.7",
+    "@types/react": "~19.0.10",
+    "@types/react-native": "^0.72.8",
+    "expo": "53.0.22",
+    "expo-av": "^15.1.7",
+    "expo-dev-client": "~5.2.4",
+    "expo-haptics": "^14.1.4",
+    "expo-intent-launcher": "^12.1.5",
+    "expo-linking": "^7.1.7",
+    "expo-notifications": "^0.31.4",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "react-native": "0.79.5",
+    "react-native-gesture-handler": "~2.24.0",
+    "react-native-safe-area-context": "5.4.0",
+    "react-native-screens": "~4.11.1",
+    "react-native-web": "^0.20.0",
+    "typescript": "~5.8.3"
+  }
+}
