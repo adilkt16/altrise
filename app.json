@@ -9,7 +9,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.altrise.alarmclock"
     },
     "android": {
       "package": "com.altrise.alarmclock",
@@ -43,7 +44,9 @@
         {
           "color": "#ffffff",
           "defaultChannel": "default",
-          "sounds": ["./assets/sounds/alarm_default.wav"]
+          "sounds": [
+            "./assets/sounds/alarm_default.wav"
+          ]
         }
       ]
     ],
