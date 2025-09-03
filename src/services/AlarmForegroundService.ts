@@ -202,4 +202,3 @@ TaskManager.defineTask(ALARM_TASK_NAME, async () => {
   console.log('⏰ Background alarm task executed');
   return TaskManager.TaskManagerTaskExecutorResult.SUCCESS;
 });
-  }

@@ -1,6 +1,7 @@
 // Utility to check for active alarms during app startup
 import { AlarmService } from '../services/AlarmService';
 import { Alarm } from '../types';
+import { AlarmForegroundService } from '../services/AlarmForegroundService';
 
 export interface ActiveAlarmInfo {
   alarm: Alarm;
@@ -15,24 +16,17 @@ export const checkForActiveAlarms = async (): Promise<ActiveAlarmInfo | null> =>
   try {
     console.log('🔍 [ActiveAlarmChecker] Checking for active alarms...');
     
-    // Add at the beginning
-    const { AlarmForegroundService } = require('../services/AlarmForegroundService');
-    
     // Check if there's already an active foreground alarm
-    try {
-      const activeServiceAlarm = await AlarmForegroundService.checkActiveAlarm();
-      if (activeServiceAlarm) {
-        console.log('🚨 Found active foreground alarm service');
-        return {
-          alarm: activeServiceAlarm,
-          isActive: true,
-          timeUntilEnd: activeServiceAlarm.endTime 
-            ? new Date(activeServiceAlarm.endTime).getTime() - Date.now()
-            : 60000, // Default 1 minute if no end time
-        };
-      }
-    } catch (error) {
-      console.log('⚠️ [ActiveAlarmChecker] Could not check foreground service:', error);
+    const activeServiceAlarm = await AlarmForegroundService.checkActiveAlarm();
+    if (activeServiceAlarm) {
+      console.log('🚨 Found active foreground alarm service');
+      return {
+        alarm: activeServiceAlarm,
+        isActive: true,
+        timeUntilEnd: activeServiceAlarm.endTime 
+          ? new Date(activeServiceAlarm.endTime).getTime() - Date.now()
+          : 60000, // Default 1 minute if no end time
+      };
     }
     
     const alarms = await AlarmService.getAlarms();

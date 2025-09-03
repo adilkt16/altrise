@@ -1,4 +1,5 @@
 import { AlarmModalData } from '../components/AlarmModal';
+import * as Notifications from 'expo-notifications';
 
 export interface AlarmModalState {
   isVisible: boolean;
@@ -264,9 +265,6 @@ class AlarmModalManager {
   private async sendFallbackNotification(data: AlarmModalData): Promise<void> {
     try {
       console.log('🔔 [ModalManager] Sending fallback notification');
-      
-      // Import Notifications here to avoid circular dependencies
-      const Notifications = require('expo-notifications');
       
       await Notifications.scheduleNotificationAsync({
         content: {

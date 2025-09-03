@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { audioService, AudioConfig } from '../services/AudioService';
+import { AlarmForegroundService } from '../services/AlarmForegroundService';
+import * as Notifications from 'expo-notifications';
 
 export interface AlarmModalData {
   alarmId: string;
@@ -292,9 +294,6 @@ export const AlarmModal: React.FC<{
       fallbackSent.current = true;
       console.log('🔔 [AlarmModal] Sending fallback notification for failed modal');
       
-      // Import Notifications here to avoid circular dependencies
-      const Notifications = require('expo-notifications');
-      
       await Notifications.scheduleNotificationAsync({
         content: {
           title: '🚨 ALARM MODAL FAILED',
@@ -437,9 +436,8 @@ export const AlarmModal: React.FC<{
     console.log('✅ [AlarmModal] Alarm dismissed by user');
     console.log(`⏱️ [AlarmModal] Alarm duration: ${startTime ? Math.round((new Date().getTime() - startTime.getTime()) / 1000) : 0} seconds`);
     
-    // Add before dismissing
+    // Stop foreground service before dismissing
     try {
-      const { AlarmForegroundService } = require('../services/AlarmForegroundService');
       await AlarmForegroundService.stopAlarmService();
       console.log('🛑 [AlarmModal] Foreground service stopped successfully');
     } catch (error) {
@@ -456,9 +454,8 @@ export const AlarmModal: React.FC<{
     console.log('😴 [AlarmModal] Alarm snoozed by user');
     console.log(`⏱️ [AlarmModal] Alarm duration before snooze: ${startTime ? Math.round((new Date().getTime() - startTime.getTime()) / 1000) : 0} seconds`);
     
-    // Add before snoozing
+    // Stop foreground service before snoozing
     try {
-      const { AlarmForegroundService } = require('../services/AlarmForegroundService');
       await AlarmForegroundService.stopAlarmService();
       console.log('🛑 [AlarmModal] Foreground service stopped successfully');
     } catch (error) {

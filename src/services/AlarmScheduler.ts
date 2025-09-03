@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { StorageService } from './StorageService';
 import { Alarm } from '../types';
+import { AlarmForegroundService } from './AlarmForegroundService';
 
 export interface ScheduledNotification {
   alarmId: string;
@@ -486,9 +487,6 @@ export class AlarmScheduler {
         return;
       }
 
-      // Add at the beginning of the method - Start foreground service when alarm triggers
-      const { AlarmForegroundService } = require('./AlarmForegroundService');
-      
       // Start foreground service when alarm triggers
       await AlarmForegroundService.startAlarmService({
         alarmId,

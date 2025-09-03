@@ -22,6 +22,10 @@ import StorageService from './src/services/StorageService';
 import modalManager, { AlarmModalState } from './src/services/AlarmModalManager';
 import { checkForActiveAlarms } from './src/utils/activeAlarmChecker';
 
+// Import AlarmForegroundService at module level
+import { AlarmForegroundService } from './src/services/AlarmForegroundService';
+import * as IntentLauncher from 'expo-intent-launcher';
+
 // Import debug utilities (development only)
 if (__DEV__) {
   import('./src/utils/AudioDebugger');
@@ -396,9 +400,9 @@ const App: React.FC = () => {
       // Request battery optimization exemption for reliable alarms
       if (Platform.OS === 'android') {
         try {
-          const { isAvailableAsync, requestAsync } = require('expo-intent-launcher');
           console.log('🔋 Requesting battery optimization exemption...');
           // This helps ensure alarms work reliably
+          // Note: IntentLauncher is imported but functionality may be limited
         } catch (error) {
           console.log('⚠️ Could not request battery optimization exemption');
         }
@@ -704,9 +708,6 @@ const App: React.FC = () => {
       
       // Add after checking alarmId
       if (data?.alarmId && !data.isEndTime) {
-        // Import foreground service
-        const { AlarmForegroundService } = require('./src/services/AlarmForegroundService');
-        
         try {
           // Get alarm data for the service
           const alarmData = await StorageService.getAlarmById(data.alarmId);
@@ -839,7 +840,6 @@ Time: ${now.toLocaleTimeString()}`,
       console.log('🚨 [App] Preparing to show alarm modal...');
       
       // Get alarm data from storage to get puzzle type and other details
-      const { StorageService } = require('./src/services/StorageService');
       const alarmData = await StorageService.getAlarmById(notificationData.alarmId);
       
       if (!alarmData) {

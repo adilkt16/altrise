@@ -5,7 +5,8 @@
 
 import * as Notifications from 'expo-notifications';
 import { AlarmScheduler } from '../services/AlarmScheduler';
-import { Alert } from 'react-native';
+import { Alert, AppState, Platform } from 'react-native';
+import modalManager from '../services/AlarmModalManager';
 
 /**
  * Log all currently scheduled notifications with detailed timing
@@ -221,7 +222,6 @@ if (__DEV__) {
   // Enhanced lifecycle testing functions
   (global as any).checkAppState = () => {
     try {
-      const { AppState, Platform } = require('react-native');
       console.log('📱 ===============================================');
       console.log('📱 CURRENT APP LIFECYCLE STATE');
       console.log('📱 ===============================================');
@@ -301,8 +301,6 @@ if (__DEV__) {
     try {
       console.log('🚨 Testing alarm modal display...');
       
-      const modalManager = require('../services/AlarmModalManager').default;
-      
       const testModalData = {
         alarmId: 'test_modal_' + Date.now(),
         title: 'Test Alarm Modal',
@@ -326,9 +324,6 @@ if (__DEV__) {
       console.log('🧩 ===============================================');
       console.log('🧩 TESTING PUZZLE MODAL FUNCTIONALITY');
       console.log('🧩 ===============================================');
-      
-      const { AlarmModalManager } = require('../services/AlarmModalManager');
-      const modalManager = AlarmModalManager.getInstance();
       
       // Test with explicit basic_math first
       const testModalData = {

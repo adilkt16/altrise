@@ -46,7 +46,11 @@
           "sounds": ["./assets/sounds/alarm_default.wav"]
         }
       ],
-      "expo-keep-awake"
+      "expo-task-manager",
+      "expo-av",
+      "expo-haptics",
+      "expo-linking",
+      "expo-intent-launcher"
     ],
     "notification": {
       "color": "#ffffff",
