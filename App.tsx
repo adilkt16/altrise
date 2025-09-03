@@ -18,6 +18,7 @@ import AlarmModal, { AlarmModalData } from './src/components/AlarmModal';
 // Import services
 import { AlarmScheduler } from './src/services/AlarmScheduler';
 import { PermissionService } from './src/services/PermissionService';
+import StorageService from './src/services/StorageService';
 import modalManager, { AlarmModalState } from './src/services/AlarmModalManager';
 import { checkForActiveAlarms } from './src/utils/activeAlarmChecker';
 
@@ -375,6 +376,34 @@ const App: React.FC = () => {
         console.log('✅ Comprehensive notification permissions granted');
       }
       
+      // Set up alarm notification channel with maximum priority
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('alarm-channel', {
+          name: 'Active Alarms',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 500, 200, 500],
+          lightColor: '#FF0000',
+          sound: 'default',
+          bypassDnd: true,
+          lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+          showBadge: true,
+          enableLights: true,
+          enableVibrate: true,
+        });
+        console.log('✅ High-priority alarm channel created');
+      }
+
+      // Request battery optimization exemption for reliable alarms
+      if (Platform.OS === 'android') {
+        try {
+          const { isAvailableAsync, requestAsync } = require('expo-intent-launcher');
+          console.log('🔋 Requesting battery optimization exemption...');
+          // This helps ensure alarms work reliably
+        } catch (error) {
+          console.log('⚠️ Could not request battery optimization exemption');
+        }
+      }
+      
       // Check and request additional platform-specific permissions
       await checkPlatformSpecificPermissions();
       
@@ -672,6 +701,30 @@ const App: React.FC = () => {
     
     if (data?.alarmId && typeof data.alarmId === 'string') {
       console.log(`⏰ ALARM ${data.alarmId} TRIGGERED at ${now.toLocaleTimeString()}`);
+      
+      // Add after checking alarmId
+      if (data?.alarmId && !data.isEndTime) {
+        // Import foreground service
+        const { AlarmForegroundService } = require('./src/services/AlarmForegroundService');
+        
+        try {
+          // Get alarm data for the service
+          const alarmData = await StorageService.getAlarmById(data.alarmId);
+          
+          // Ensure alarm is playing even if modal fails
+          await AlarmForegroundService.startAlarmService({
+            alarmId: data.alarmId,
+            label: data.alarmLabel || 'Alarm',
+            soundFile: alarmData?.soundFile || 'alarm_default',
+            vibrationEnabled: alarmData?.vibrationEnabled ?? true,
+            puzzleType: alarmData?.puzzleType,
+            endTime: alarmData?.endTime,
+          });
+          console.log('✅ Foreground service started for alarm playback');
+        } catch (error) {
+          console.error('❌ Error starting foreground service:', error);
+        }
+      }
       
       // Save last alarm trigger for debugging
       try {

@@ -227,7 +227,9 @@ export const AlarmModal: React.FC<{
         console.log(`⏰ Auto-dismiss scheduled for: ${endTime.toLocaleString()}`);
         const timer = setTimeout(() => {
           console.log(`⏰ Auto-dismissing alarm at end time: ${endTime.toLocaleString()}`);
-          handleAutoDismiss();
+          handleAutoDismiss().catch(error => {
+            console.error('❌ [AlarmModal] Error in handleAutoDismiss:', error);
+          });
         }, timeUntilEnd);
         setEndTimeTimer(timer);
       }
@@ -422,16 +424,27 @@ export const AlarmModal: React.FC<{
     
     if (isCorrect) {
       console.log('✅ [AlarmModal] Puzzle solved! Allowing dismiss.');
-      handleDismiss();
+      handleDismiss().catch(error => {
+        console.error('❌ [AlarmModal] Error in handleDismiss:', error);
+      });
     } else {
       console.log(`❌ [AlarmModal] Incorrect answer. Continue trying until correct or end time reached.`);
       setUserAnswer('');
     }
   };
 
-  const handleDismiss = () => {
+  const handleDismiss = async () => {
     console.log('✅ [AlarmModal] Alarm dismissed by user');
     console.log(`⏱️ [AlarmModal] Alarm duration: ${startTime ? Math.round((new Date().getTime() - startTime.getTime()) / 1000) : 0} seconds`);
+    
+    // Add before dismissing
+    try {
+      const { AlarmForegroundService } = require('../services/AlarmForegroundService');
+      await AlarmForegroundService.stopAlarmService();
+      console.log('🛑 [AlarmModal] Foreground service stopped successfully');
+    } catch (error) {
+      console.error('❌ [AlarmModal] Error stopping foreground service:', error);
+    }
     
     if (data?.onDismiss) {
       data.onDismiss();
@@ -439,9 +452,18 @@ export const AlarmModal: React.FC<{
     onClose();
   };
 
-  const handleSnooze = () => {
+  const handleSnooze = async () => {
     console.log('😴 [AlarmModal] Alarm snoozed by user');
     console.log(`⏱️ [AlarmModal] Alarm duration before snooze: ${startTime ? Math.round((new Date().getTime() - startTime.getTime()) / 1000) : 0} seconds`);
+    
+    // Add before snoozing
+    try {
+      const { AlarmForegroundService } = require('../services/AlarmForegroundService');
+      await AlarmForegroundService.stopAlarmService();
+      console.log('🛑 [AlarmModal] Foreground service stopped successfully');
+    } catch (error) {
+      console.error('❌ [AlarmModal] Error stopping foreground service:', error);
+    }
     
     if (data?.onSnooze) {
       data.onSnooze();
@@ -449,9 +471,9 @@ export const AlarmModal: React.FC<{
     onClose();
   };
 
-  const handleAutoDismiss = () => {
+  const handleAutoDismiss = async () => {
     console.log('⏰ [AlarmModal] Auto-dismissing alarm at end time');
-    handleDismiss();
+    await handleDismiss();
   };
 
   if (!data) {

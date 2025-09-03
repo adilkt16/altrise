@@ -22,6 +22,8 @@
         "POST_NOTIFICATIONS",
         "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
         "SYSTEM_ALERT_WINDOW",
+        "USE_FULL_SCREEN_INTENT",
+        "DISABLE_KEYGUARD",
         "android.permission.VIBRATE",
         "android.permission.WAKE_LOCK",
         "android.permission.RECEIVE_BOOT_COMPLETED",
@@ -29,7 +31,9 @@
         "android.permission.USE_EXACT_ALARM",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS",
-        "android.permission.SYSTEM_ALERT_WINDOW"
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.DISABLE_KEYGUARD"
       ]
     },
     "plugins": [
@@ -38,9 +42,11 @@
         "expo-notifications",
         {
           "color": "#ffffff",
-          "defaultChannel": "default"
+          "defaultChannel": "default",
+          "sounds": ["./assets/sounds/alarm_default.wav"]
         }
-      ]
+      ],
+      "expo-keep-awake"
     ],
     "notification": {
       "color": "#ffffff",

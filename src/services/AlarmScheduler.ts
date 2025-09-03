@@ -375,37 +375,51 @@ export class AlarmScheduler {
         console.log(`   End Time: ${alarm.endTime}`);
       }
 
-      const notificationContent: Notifications.NotificationContentInput = {
-        title,
-        body,
-        sound: alarm.soundFile === 'default_alarm.mp3' ? 'default' : undefined,
+      // Update notification content for full-screen intent
+      const content: Notifications.NotificationContentInput = {
+        title: isEndTime ? '⏰ Alarm Period Ended' : '⏰ ALARM!',
+        body: isEndTime 
+          ? `${alarm.label || 'Alarm'} period has ended` 
+          : `${alarm.label || 'Wake up!'}`,
+        sound: !isEndTime, // Only play sound for main alarm
         priority: Notifications.AndroidNotificationPriority.MAX,
+        vibrate: alarm.vibrationEnabled ? [0, 500, 200, 500] : undefined,
+        categoryIdentifier: 'alarm',
+        sticky: !isEndTime,
+        autoDismiss: isEndTime,
         data: {
           alarmId: alarm.id,
-          isEndTime,
-          puzzleType: alarm.puzzleType,
           alarmLabel: alarm.label,
-          triggerTime: triggerDate.toISOString(),
+          isEndTime,
           originalTime: alarm.time,
+          expectedTriggerTime: triggerDate.toISOString(),
+          puzzleType: alarm.puzzleType,
+          triggerTime: triggerDate.toISOString(),
           repeatDays: alarm.repeatDays,
           endTime: alarm.endTime,
           // Enhanced tracking data
           notificationCreatedAt: now.toISOString(),
-          expectedTriggerTime: triggerDate.toISOString(),
           schedulingTimestamp: Date.now(),
         },
-        ...(Platform.OS === 'android' && {
-          channelId: 'alarms',
-          sticky: !isEndTime,
-          // Enhanced Android notification properties for alarm
-          vibrationPattern: [0, 1000, 500, 1000],
-          lightColor: '#FF231F7C',
-          badge: 1,
-        }),
-      } as any;
+      };
+
+      // Add Android-specific full-screen intent
+      if (Platform.OS === 'android' && !isEndTime) {
+        (content as any).android = {
+          channelId: 'alarm-channel',
+          importance: Notifications.AndroidImportance.MAX,
+          sound: true,
+          vibrationPattern: alarm.vibrationEnabled ? [0, 500, 200, 500] : undefined,
+          autoCancel: false,
+          ongoing: true,
+          priority: 'max',
+          fullScreenIntent: true,
+          lockscreenVisibility: 1,
+        };
+      }
 
       const notificationRequest = {
-        content: notificationContent,
+        content: content,
         trigger: { 
           type: Notifications.SchedulableTriggerInputTypes.DATE as Notifications.SchedulableTriggerInputTypes.DATE,
           date: triggerDate 
@@ -471,6 +485,19 @@ export class AlarmScheduler {
         console.log(`⏸️ Alarm ${alarmId} is disabled - not rescheduling`);
         return;
       }
+
+      // Add at the beginning of the method - Start foreground service when alarm triggers
+      const { AlarmForegroundService } = require('./AlarmForegroundService');
+      
+      // Start foreground service when alarm triggers
+      await AlarmForegroundService.startAlarmService({
+        alarmId,
+        label: alarm.label,
+        soundFile: alarm.soundFile || 'alarm_default',
+        vibrationEnabled: alarm.vibrationEnabled,
+        puzzleType: alarm.puzzleType,
+        endTime: alarm.endTime,
+      });
       
       // Check if this is a repeating alarm
       if (alarm.repeatDays && alarm.repeatDays.length > 0) {
@@ -733,11 +760,11 @@ export class AlarmScheduler {
       
       // Set up notification channel for Android
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('alarms', {
-          name: 'Alarms',
+        await Notifications.setNotificationChannelAsync('alarm-channel', {
+          name: 'Active Alarms',
           importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
+          vibrationPattern: [0, 500, 200, 500],
+          lightColor: '#FF0000',
           lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
           bypassDnd: true,
           enableLights: true,
